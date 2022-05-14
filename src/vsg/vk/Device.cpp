@@ -52,8 +52,13 @@ static void releaseDeviceID(uint32_t deviceID)
 }
 
 Device::Device()
+  : deviceID(getUniqueDeviceID())
 {
-
+    if (deviceID >= VSG_MAX_DEVICES)
+    {
+        releaseDeviceID(deviceID);
+        throw Exception{"Warning : number of vsg:Device allocated exceeds number supported ", VSG_MAX_DEVICES};
+    }
 }
 
 Device::Device(PhysicalDevice* physicalDevice, const QueueSettings& queueSettings, const Names& layers, const Names& deviceExtensions, const DeviceFeatures* deviceFeatures, AllocationCallbacks* allocator) :

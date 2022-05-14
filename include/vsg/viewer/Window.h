@@ -107,7 +107,7 @@ namespace vsg
         const ref_ptr<Framebuffer> framebuffer(size_t i) const { return _frames[i].framebuffer; }
 
         /// call vkAquireNextImageKHR to find the next imageIndex of the swapchain images/framebuffers
-        VkResult acquireNextImage(uint64_t timeout = std::numeric_limits<uint64_t>::max());
+        virtual VkResult acquireNextImage(uint64_t timeout = std::numeric_limits<uint64_t>::max());
 
         /// get the image index for specified relative frame index, a 0 value is the current frame being rendered, 1 is the previous frame, 2 is the previous frame that.
         size_t imageIndex(size_t relativeFrameIndex = 0) const { return relativeFrameIndex < _indices.size() ? _indices[relativeFrameIndex] : _indices.size(); }
@@ -132,16 +132,16 @@ namespace vsg
         virtual ~Window();
 
         virtual void _initSurface() = 0;
-        void _initFormats();
-        void _initInstance();
-        void _initPhysicalDevice();
-        void _initDevice();
-        void _initRenderPass();
-        void _initSwapchain();
+        virtual void _initFormats();
+        virtual void _initInstance();
+        virtual void _initPhysicalDevice();
+        virtual void _initDevice();
+        virtual void _initRenderPass();
+        virtual void _initSwapchain();
 
         virtual void clear();
-        void share(Window& window);
-        void buildSwapchain();
+        virtual void share(Window& window);
+        virtual void buildSwapchain();
 
         ref_ptr<WindowTraits> _traits;
 
