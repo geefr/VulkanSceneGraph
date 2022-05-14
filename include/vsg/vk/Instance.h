@@ -61,6 +61,7 @@ namespace vsg
         std::tuple<ref_ptr<PhysicalDevice>, int, int> getPhysicalDeviceAndQueueFamily(VkQueueFlags queueFlags, Surface* surface, const PhysicalDeviceTypes& deviceTypePreferences = {}) const;
 
     protected:
+		Instance();
         virtual ~Instance();
 
         VkInstance _instance;

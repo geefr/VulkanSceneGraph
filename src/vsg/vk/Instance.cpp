@@ -55,6 +55,11 @@ Names vsg::validateInstancelayerNames(const Names& names)
     return validatedNames;
 }
 
+Instance::Instance()
+{
+	
+}
+
 Instance::Instance(const Names& instanceExtensions, const Names& layers, uint32_t vulkanApiVersion, AllocationCallbacks* allocator)
 {
     // application info
