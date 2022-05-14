@@ -58,6 +58,7 @@ namespace vsg
         ref_ptr<Queue> getQueue(uint32_t queueFamilyIndex, uint32_t queueIndex = 0);
 
     protected:
+		Device();
         virtual ~Device();
 
         VkDevice _device;
