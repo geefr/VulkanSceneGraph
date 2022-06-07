@@ -16,6 +16,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <vsg/core/Array2D.h>
 #include <vsg/io/read.h>
 #include <vsg/io/write.h>
+#include <vsg/state/BindDescriptorSet.h>
 #include <vsg/state/ColorBlendState.h>
 #include <vsg/state/DepthStencilState.h>
 #include <vsg/state/DescriptorImage.h>
@@ -214,7 +215,7 @@ void GpuLayoutTechnique::setup(Text* text, uint32_t minimumAllocation)
         // disable face culling so text can be seen from both sides
         config->rasterizationState->cullMode = VK_CULL_MODE_NONE;
 
-        // set topoply of primitive
+        // set topology of primitive
         config->inputAssemblyState->topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
 
         // set alpha blending
@@ -234,7 +235,7 @@ void GpuLayoutTechnique::setup(Text* text, uint32_t minimumAllocation)
 
         config->colorBlendState->attachments = {colorBlendAttachment};
 
-        // set up descriptor set for text uniforms and layput
+        // set up descriptor set for text uniforms and layout
         DescriptorSetLayoutBindings textArrayDescriptorBindings{
             {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT, nullptr}, // Layout uniform
             {1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT, nullptr}  // Text uniform

@@ -17,13 +17,15 @@ bool SharedObjects::suitable(const Path& filename) const
     return excludedExtensions.count(vsg::lowerCaseFileExtension(filename)) == 0;
 }
 
-bool SharedObjects::contains(const Path& filename, ref_ptr<const Options> options)
+bool SharedObjects::contains(const Path& filename, ref_ptr<const Options> options) const
 {
     std::scoped_lock<std::recursive_mutex> lock(_mutex);
 
     auto loadedObject_id = std::type_index(typeid(LoadedObject));
-    auto& loadedObjects = _sharedObjects[loadedObject_id];
+    auto itr = _sharedObjects.find(loadedObject_id);
+    if (itr == _sharedObjects.end()) return false;
 
+    auto& loadedObjects = itr->second;
     auto key = LoadedObject::create(filename, options);
     return loadedObjects.find(key) != loadedObjects.end();
 }
@@ -39,6 +41,28 @@ void SharedObjects::add(ref_ptr<Object> object, const Path& filename, ref_ptr<co
     loadedObjects.insert(key);
 }
 
+bool SharedObjects::remove(const Path& filename, ref_ptr<const Options> options)
+{
+    std::scoped_lock<std::recursive_mutex> lock(_mutex);
+
+    auto loadedObject_id = std::type_index(typeid(LoadedObject));
+    auto itr = _sharedObjects.find(loadedObject_id);
+    if (itr == _sharedObjects.end()) return false;
+
+    auto& loadedObjects = itr->second;
+
+    auto key = LoadedObject::create(filename, options);
+    if (auto lo_itr = loadedObjects.find(key); lo_itr != loadedObjects.end())
+    {
+        loadedObjects.erase(lo_itr);
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
 void SharedObjects::clear()
 {
     std::scoped_lock<std::recursive_mutex> lock(_mutex);
@@ -52,7 +76,7 @@ void SharedObjects::prune()
 
     auto loadedObject_id = std::type_index(typeid(LoadedObject));
 
-    // record observerr pointers for each LoadedOjbect object so we can clear them to prevent local references keeping them from being pruned
+    // record observer pointers for each LoadedOjbect object so we can clear them to prevent local references keeping them from being pruned
     auto& loadedObjects = _sharedObjects[loadedObject_id];
     std::vector<observer_ptr<Object>> observedLoadedObjects(loadedObjects.size());
     auto observedLoadedObject_itr = observedLoadedObjects.begin();
@@ -63,7 +87,7 @@ void SharedObjects::prune()
         loadedObject.object = {};
     }
 
-    // record observerr pointers for each shared default object so we can clear them to prevent local references keeping them from being pruned
+    // record observer pointers for each shared default object so we can clear them to prevent local references keeping them from being pruned
     std::vector<observer_ptr<Object>> observedDefaults(_defaults.size());
     auto observedDefaults_itr = observedDefaults.begin();
     for (auto defaults_itr = _defaults.begin(); defaults_itr != _defaults.end(); ++defaults_itr)

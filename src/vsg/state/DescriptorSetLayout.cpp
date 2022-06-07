@@ -36,6 +36,26 @@ DescriptorSetLayout::~DescriptorSetLayout()
 {
 }
 
+void DescriptorSetLayout::getDescriptorPoolSizes(DescriptorPoolSizes& descriptorPoolSizes)
+{
+    for (auto& binding : bindings)
+    {
+        auto itr = descriptorPoolSizes.begin();
+        for (; itr != descriptorPoolSizes.end(); ++itr)
+        {
+            if (itr->type == binding.descriptorType)
+            {
+                itr->descriptorCount += binding.descriptorCount;
+                break;
+            }
+        }
+        if (itr == descriptorPoolSizes.end())
+        {
+            descriptorPoolSizes.emplace_back(VkDescriptorPoolSize{binding.descriptorType, binding.descriptorCount});
+        }
+    }
+}
+
 int DescriptorSetLayout::compare(const Object& rhs_object) const
 {
     int result = Object::compare(rhs_object);
@@ -49,7 +69,15 @@ void DescriptorSetLayout::read(Input& input)
 {
     Object::read(input);
 
-    bindings.resize(input.readValue<uint32_t>("NumDescriptorSetLayoutBindings"));
+    if (input.version_greater_equal(0, 4, 0))
+    {
+        bindings.resize(input.readValue<uint32_t>("bindings"));
+    }
+    else
+    {
+        bindings.resize(input.readValue<uint32_t>("NumDescriptorSetLayoutBindings"));
+    }
+
     for (auto& dslb : bindings)
     {
         input.read("binding", dslb.binding);
@@ -63,7 +91,15 @@ void DescriptorSetLayout::write(Output& output) const
 {
     Object::write(output);
 
-    output.writeValue<uint32_t>("NumDescriptorSetLayoutBindings", bindings.size());
+    if (output.version_greater_equal(0, 4, 0))
+    {
+        output.writeValue<uint32_t>("bindings", bindings.size());
+    }
+    else
+    {
+        output.writeValue<uint32_t>("NumDescriptorSetLayoutBindings", bindings.size());
+    }
+
     for (auto& dslb : bindings)
     {
         output.write("binding", dslb.binding);
