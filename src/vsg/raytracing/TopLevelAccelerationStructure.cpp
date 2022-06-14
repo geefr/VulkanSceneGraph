@@ -31,13 +31,16 @@ GeometryInstance::GeometryInstance() :
 {
 }
 
-TopLevelAccelerationStructure::TopLevelAccelerationStructure(Device* device) :
-    Inherit(VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR, device)
+TopLevelAccelerationStructure::TopLevelAccelerationStructure(Device* device)
+#if ENABLE_RAY_TRACING
+:    Inherit(VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR, device)
+#endif
 {
 }
 
 void TopLevelAccelerationStructure::compile(Context& context)
 {
+#if ENABLE_RAY_TRACING
     if (geometryInstances.empty()) return; // no data
     if (_instances) return;                // already compiled
 
@@ -78,4 +81,5 @@ void TopLevelAccelerationStructure::compile(Context& context)
     Inherit::compile(context);
 
     context.buildAccelerationStructureCommands.push_back(BuildAccelerationStructureCommand::create(context.device, _accelerationStructureBuildGeometryInfo, _accelerationStructure, _geometryPrimitiveCounts));
+#endif
 }

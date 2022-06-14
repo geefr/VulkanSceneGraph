@@ -26,6 +26,9 @@ namespace vsg
 
     extern VSG_DECLSPEC bool isExtensionListSupported(const Names& extensionList);
 
+#define ENABLE_RAY_TRACING 0
+
+
     // TODO need to reorganize so that the Device "has a" extension structure and avoid the usage of static container
     class VSG_DECLSPEC Extensions : public Inherit<Object, Extensions>
     {
@@ -35,6 +38,7 @@ namespace vsg
         // VK_KHR_create_renderpass2
         PFN_vkCreateRenderPass2KHR vkCreateRenderPass2 = nullptr;
 
+#if ENABLE_RAY_TRACING
         // VK_KHR_ray_tracing
         PFN_vkCreateAccelerationStructureKHR vkCreateAccelerationStructureKHR = nullptr;
         PFN_vkDestroyAccelerationStructureKHR vkDestroyAccelerationStructureKHR = nullptr;
@@ -45,6 +49,7 @@ namespace vsg
         PFN_vkGetRayTracingShaderGroupHandlesKHR vkGetRayTracingShaderGroupHandlesKHR = nullptr;
         PFN_vkCmdTraceRaysKHR vkCmdTraceRaysKHR = nullptr;
         PFN_vkGetBufferDeviceAddressKHR vkGetBufferDeviceAddressKHR = nullptr;
+#endif
 
         // VK_NV_mesh_shader
         PFN_vkCmdDrawMeshTasksNV vkCmdDrawMeshTasksNV = nullptr;

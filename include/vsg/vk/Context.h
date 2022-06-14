@@ -37,6 +37,7 @@ namespace vsg
     class View;
     class ViewDependentState;
 
+#if ENABLE_RAY_TRACING
     class VSG_DECLSPEC BuildAccelerationStructureCommand : public Inherit<Command, BuildAccelerationStructureCommand>
     {
     public:
@@ -59,6 +60,7 @@ namespace vsg
         ref_ptr<Buffer> _scratchBuffer;
     };
     VSG_type_name(vsg::BuildAccelerationStructureCommand);
+#endif
 
     class VSG_DECLSPEC Context : public Inherit<Object, Context>
     {
@@ -143,7 +145,9 @@ namespace vsg
 
         // RTX ray tracing
         VkDeviceSize scratchBufferSize;
+#if ENABLE_RAY_TRACING
         std::vector<ref_ptr<BuildAccelerationStructureCommand>> buildAccelerationStructureCommands;
+#endif
     };
     VSG_type_name(vsg::Context);
 

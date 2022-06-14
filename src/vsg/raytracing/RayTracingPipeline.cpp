@@ -130,6 +130,7 @@ RayTracingPipeline::Implementation::Implementation(Context& context, RayTracingP
 
     auto extensions = _device->getExtensions();
 
+#if ENABLE_RAY_TRACING
     VkRayTracingPipelineCreateInfoKHR pipelineInfo = {};
     pipelineInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR;
     pipelineInfo.layout = pipelineLayout->vk(context.deviceID);
@@ -201,6 +202,7 @@ RayTracingPipeline::Implementation::Implementation(Context& context, RayTracingP
     {
         throw Exception{"Error: vsg::Pipeline::createGraphics(...) failed to create VkPipeline.", result};
     }
+#endif
 }
 
 RayTracingPipeline::Implementation::~Implementation()

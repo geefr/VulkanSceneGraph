@@ -23,6 +23,7 @@ TraceRays::TraceRays()
 
 void TraceRays::record(CommandBuffer& commandBuffer) const
 {
+#if ENABLE_RAY_TRACING
     Device* device = commandBuffer.getDevice();
     auto extensions = device->getExtensions();
     auto rayTracingProperties = device->getPhysicalDevice()->getProperties<VkPhysicalDeviceRayTracingPipelinePropertiesKHR, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR>();
@@ -54,4 +55,5 @@ void TraceRays::record(CommandBuffer& commandBuffer) const
         width,
         height,
         depth);
+#endif
 }

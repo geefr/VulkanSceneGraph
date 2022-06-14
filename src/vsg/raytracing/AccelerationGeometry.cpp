@@ -23,10 +23,14 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 using namespace vsg;
 
-AccelerationGeometry::AccelerationGeometry() :
-    _geometry({})
+AccelerationGeometry::AccelerationGeometry()
+#if ENABLE_RAY_TRACING
+:    _geometry({})
+#endif
 {
+#if ENABLE_RAY_TRACING
     _geometry.geometry.triangles.vertexData.deviceAddress = VkDeviceAddress{0};
+#endif
 }
 
 void AccelerationGeometry::assignVertices(ref_ptr<vsg::Data> in_vertices)
@@ -41,6 +45,7 @@ void AccelerationGeometry::assignIndices(ref_ptr<vsg::Data> in_indices)
 
 void AccelerationGeometry::compile(Context& context)
 {
+#if ENABLE_RAY_TRACING
     if (!verts) return;                                                                      // no data set
     if (_geometry.geometry.triangles.vertexData.deviceAddress != VkDeviceAddress{0}) return; // already compiled
 
@@ -89,4 +94,5 @@ void AccelerationGeometry::compile(Context& context)
     _geometry.geometry.triangles.pNext = nullptr;
     _geometry.flags = VK_GEOMETRY_OPAQUE_BIT_KHR;
     _geometry.pNext = nullptr;
+#endif
 }

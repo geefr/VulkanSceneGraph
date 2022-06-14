@@ -29,8 +29,9 @@ namespace vsg
 
         void compile(Context& context);
 
+#if ENABLE_RAY_TRACING
         operator VkAccelerationStructureGeometryKHR() const { return _geometry; }
-
+#endif
         ref_ptr<Data> verts;
         ref_ptr<Data> indices;
 
@@ -41,7 +42,9 @@ namespace vsg
         // compiled data
         ref_ptr<BufferInfo> _vertexBuffer;
         ref_ptr<BufferInfo> _indexBuffer;
+#if ENABLE_RAY_TRACING
         VkAccelerationStructureGeometryKHR _geometry;
+#endif
     };
 
     using AccelerationGeometries = std::vector<ref_ptr<AccelerationGeometry>>;

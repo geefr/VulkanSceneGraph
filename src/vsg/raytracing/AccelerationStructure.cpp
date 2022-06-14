@@ -22,6 +22,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 using namespace vsg;
 
+#if ENABLE_RAY_TRACING
 AccelerationStructure::AccelerationStructure(VkAccelerationStructureTypeKHR type, Device* device) :
     _accelerationStructure{},
     _accelerationStructureInfo{},
@@ -42,20 +43,24 @@ AccelerationStructure::AccelerationStructure(VkAccelerationStructureTypeKHR type
     _accelerationStructureBuildGeometryInfo.type = type;
     _accelerationStructureBuildGeometryInfo.flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
 }
+#endif
 
 AccelerationStructure::~AccelerationStructure()
 {
+#if ENABLE_RAY_TRACING
     if (_accelerationStructure)
     {
         auto extensions = _device->getExtensions();
         extensions->vkDestroyAccelerationStructureKHR(*_device, _accelerationStructure, nullptr);
     }
+#endif
 }
 
 void AccelerationStructure::compile(Context& context)
 {
     auto extensions = context.device->getExtensions();
 
+#if ENABLE_RAY_TRACING
     VkAccelerationStructureBuildSizesInfoKHR accelerationStructureBuildSizesInfo{};
     accelerationStructureBuildSizesInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
     extensions->vkGetAccelerationStructureBuildSizesKHR(
@@ -85,4 +90,5 @@ void AccelerationStructure::compile(Context& context)
     {
         throw Exception{"Error: vsg::AccelerationStructure::compile(...) failed to create AccelerationStructure.", result};
     }
+#endif
 }

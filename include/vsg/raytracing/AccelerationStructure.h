@@ -24,12 +24,15 @@ namespace vsg
     class VSG_DECLSPEC AccelerationStructure : public Inherit<Object, AccelerationStructure>
     {
     public:
+#if ENABLE_RAY_TRACING
         AccelerationStructure(VkAccelerationStructureTypeKHR type, Device* device);
-
+#endif
         virtual void compile(Context& context);
 
+#if ENABLE_RAY_TRACING
         operator VkAccelerationStructureKHR() const { return _accelerationStructure; }
         operator VkAccelerationStructureBuildGeometryInfoKHR() const { return _accelerationStructureBuildGeometryInfo; }
+#endif
 
         uint64_t handle() const { return _handle; }
 
@@ -38,10 +41,12 @@ namespace vsg
     protected:
         virtual ~AccelerationStructure();
 
+#if ENABLE_RAY_TRACING
         VkAccelerationStructureKHR _accelerationStructure;
         VkAccelerationStructureCreateInfoKHR _accelerationStructureInfo;
         std::vector<uint32_t> _geometryPrimitiveCounts;
         VkAccelerationStructureBuildGeometryInfoKHR _accelerationStructureBuildGeometryInfo;
+#endif
         ref_ptr<Buffer> _buffer;
         ref_ptr<DeviceMemory> _memory;
         uint64_t _handle = 0;
