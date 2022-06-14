@@ -23,6 +23,10 @@ using namespace vsg;
 
 #define TRANSFER_BUFFERS 0
 
+#if VK_HEADER_VERSION <= 130
+    #define VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR 0x00000001
+#endif
+
 GeometryInstance::GeometryInstance() :
     id(0),
     mask(0xff),

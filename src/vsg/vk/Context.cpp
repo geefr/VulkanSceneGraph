@@ -32,6 +32,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 using namespace vsg;
 
+#if VK_HEADER_VERSION <= 130
+#define VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR 0x00000001
+#define VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT 0x00020000
+#endif
+
 #if ENABLE_RAY_TRACING
 
 /////////////////////////////////////////////////////////////////////////////////////////

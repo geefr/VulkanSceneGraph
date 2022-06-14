@@ -15,6 +15,10 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <vsg/commands/Command.h>
 #include <vsg/state/BufferInfo.h>
 
+#if ENABLE_RAY_TRACING==0
+    #define VK_SHADER_UNUSED_KHR (~0U)
+#endif
+
 namespace vsg
 {
 

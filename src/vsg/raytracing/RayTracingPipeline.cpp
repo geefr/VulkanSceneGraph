@@ -20,6 +20,10 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 using namespace vsg;
 
+#if VK_HEADER_VERSION <= 130
+#define VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR VK_PIPELINE_BIND_POINT_RAY_TRACING_NV
+#endif
+
 ////////////////////////////////////////////////////////////////////////
 //
 // RayTracingPipeline

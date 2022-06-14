@@ -15,6 +15,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <vsg/raytracing/AccelerationStructure.h>
 #include <vsg/state/Descriptor.h>
 
+#if ENABLE_RAY_TRACING==0
+    #define VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR VkDescriptorType(1000150000)
+#endif
 namespace vsg
 {
 
@@ -40,8 +43,10 @@ namespace vsg
     protected:
         AccelerationStructures _accelerationStructures;
 
+#if ENABLE_RAY_TRACING
         // populated by compile()
         std::vector<VkAccelerationStructureKHR> _vkAccelerationStructures;
+#endif
     };
     VSG_type_name(vsg::DescriptorAccelerationStructure)
 
