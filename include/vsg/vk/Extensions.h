@@ -14,6 +14,12 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 #include <vsg/vk/Instance.h>
 
+#define ENABLE_RAY_TRACING (VK_HEADER_VERSION >= 162)
+
+#if VK_HEADER_VERSION <= 131
+    #define VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR VK_PIPELINE_BIND_POINT_RAY_TRACING_NV
+#endif
+
 namespace vsg
 {
     class Device;
@@ -25,8 +31,6 @@ namespace vsg
     extern VSG_DECLSPEC bool isExtensionSupported(const char* extensionName);
 
     extern VSG_DECLSPEC bool isExtensionListSupported(const Names& extensionList);
-
-#define ENABLE_RAY_TRACING 0
 
 
     // TODO need to reorganize so that the Device "has a" extension structure and avoid the usage of static container
