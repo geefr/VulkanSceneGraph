@@ -235,10 +235,6 @@ if(NOT MSVC AND NOT ANDROID AND NOT APPLE)
   endif()
 endif()
 
-if(ANDROID)
-  list(APPEND LIBRARIES android log)
-endif()
-
 if (glslang_FOUND)
     set(LIBRARIES ${LIBRARIES} PUBLIC ${glslang_LIBRARIES})
 
@@ -279,9 +275,9 @@ if (ANDROID)
     set(SOURCES ${SOURCES} platform/android/Android_Window.cpp)
 
     if(CMAKE_SYSTEM_VERSION GREATER 24)
-        set(LIBRARIES ${LIBRARIES} PRIVATE ${AndroidLib} PRIVATE ${AndroidNativeWindowLib})
+        set(LIBRARIES ${LIBRARIES} PRIVATE ${AndroidLib} PRIVATE ${AndroidLogLib} PRIVATE ${AndroidNativeWindowLib})
     else()
-        set(LIBRARIES ${LIBRARIES} PRIVATE ${AndroidLib})
+        set(LIBRARIES ${LIBRARIES} PRIVATE ${AndroidLib} PRIVATE ${AndroidLogLib})
     endif()
 
 elseif (WIN32)
