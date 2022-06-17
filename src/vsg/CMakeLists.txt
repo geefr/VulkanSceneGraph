@@ -234,6 +234,10 @@ if(NOT MSVC AND NOT ANDROID AND NOT APPLE)
   endif()
 endif()
 
+if(ANDROID)
+  list(APPEND LIBRARIES android log)
+endif()
+
 if (glslang_FOUND)
     set(LIBRARIES ${LIBRARIES} PUBLIC ${glslang_LIBRARIES})
 
