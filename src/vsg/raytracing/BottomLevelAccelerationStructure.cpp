@@ -21,13 +21,17 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 using namespace vsg;
 
-BottomLevelAccelerationStructure::BottomLevelAccelerationStructure(Device* device) :
+BottomLevelAccelerationStructure::BottomLevelAccelerationStructure(Device* device)
+#if ENABLE_RAY_TRACING
+:
     Inherit(VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR, device)
+#endif
 {
 }
 
 void BottomLevelAccelerationStructure::compile(Context& context)
 {
+#if ENABLE_RAY_TRACING
     if (geometries.size() == 0) return;                    // no data
     if (_vkGeometries.size() == geometries.size()) return; // already compiled
 
@@ -48,4 +52,5 @@ void BottomLevelAccelerationStructure::compile(Context& context)
     Inherit::compile(context);
 
     context.buildAccelerationStructureCommands.push_back(BuildAccelerationStructureCommand::create(context.device, _accelerationStructureBuildGeometryInfo, _accelerationStructure, _geometryPrimitiveCounts));
+#endif
 }

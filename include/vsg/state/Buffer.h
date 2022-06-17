@@ -15,6 +15,10 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <vsg/vk/DeviceMemory.h>
 #include <vsg/vk/vk_buffer.h>
 
+#if VK_HEADER_VERSION <= 130
+    #define VK_ERROR_UNKNOWN VkResult(-13)
+#endif
+
 namespace vsg
 {
     // forward declare

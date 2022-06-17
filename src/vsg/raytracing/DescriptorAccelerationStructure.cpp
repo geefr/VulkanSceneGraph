@@ -18,7 +18,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 using namespace vsg;
 
 DescriptorAccelerationStructure::DescriptorAccelerationStructure() :
+#if ENABLE_RAY_TRACING
     Inherit(0, 0, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR)
+#else
+    Inherit(0, 0, VkDescriptorType(1000150000))
+#endif
 {
 }
 
@@ -42,6 +46,7 @@ void DescriptorAccelerationStructure::write(Output& output) const
 
 void DescriptorAccelerationStructure::compile(Context& context)
 {
+#if ENABLE_RAY_TRACING
     // check if we have already compiled the imageData.
     if (_vkAccelerationStructures.size() == _accelerationStructures.size()) return;
 
@@ -50,6 +55,7 @@ void DescriptorAccelerationStructure::compile(Context& context)
         accelstruct->compile(context);
         _vkAccelerationStructures.push_back(*accelstruct);
     }
+#endif
 }
 
 void DescriptorAccelerationStructure::assignTo(Context& context, VkWriteDescriptorSet& wds) const
@@ -57,6 +63,7 @@ void DescriptorAccelerationStructure::assignTo(Context& context, VkWriteDescript
     // TODO HERE
     Descriptor::assignTo(context, wds);
 
+#if ENABLE_RAY_TRACING
     auto descriptorAccelerationStructureInfo = context.scratchMemory->allocate<VkWriteDescriptorSetAccelerationStructureKHR>(1);
     descriptorAccelerationStructureInfo->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
     descriptorAccelerationStructureInfo->accelerationStructureCount = static_cast<uint32_t>(_vkAccelerationStructures.size());
@@ -65,6 +72,7 @@ void DescriptorAccelerationStructure::assignTo(Context& context, VkWriteDescript
 
     wds.descriptorCount = static_cast<uint32_t>(_vkAccelerationStructures.size());
     wds.pNext = descriptorAccelerationStructureInfo;
+#endif
 }
 
 uint32_t DescriptorAccelerationStructure::getNumDescriptors() const

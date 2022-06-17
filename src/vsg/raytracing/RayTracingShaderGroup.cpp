@@ -37,6 +37,7 @@ void RayTracingShaderGroup::write(Output& output) const
     Object::write(output);
 }
 
+#if ENABLE_RAY_TRACING
 void RayTracingShaderGroup::applyTo(VkRayTracingShaderGroupCreateInfoKHR& shaderGroupInfo) const
 {
     shaderGroupInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
@@ -47,3 +48,4 @@ void RayTracingShaderGroup::applyTo(VkRayTracingShaderGroupCreateInfoKHR& shader
     shaderGroupInfo.anyHitShader = anyHitShader;
     shaderGroupInfo.intersectionShader = intersectionShader;
 }
+#endif

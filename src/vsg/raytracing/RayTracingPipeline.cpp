@@ -20,6 +20,10 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 using namespace vsg;
 
+#if VK_HEADER_VERSION <= 130
+#define VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR VK_PIPELINE_BIND_POINT_RAY_TRACING_NV
+#endif
+
 ////////////////////////////////////////////////////////////////////////
 //
 // RayTracingPipeline
@@ -130,6 +134,7 @@ RayTracingPipeline::Implementation::Implementation(Context& context, RayTracingP
 
     auto extensions = _device->getExtensions();
 
+#if ENABLE_RAY_TRACING
     VkRayTracingPipelineCreateInfoKHR pipelineInfo = {};
     pipelineInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR;
     pipelineInfo.layout = pipelineLayout->vk(context.deviceID);
@@ -201,6 +206,7 @@ RayTracingPipeline::Implementation::Implementation(Context& context, RayTracingP
     {
         throw Exception{"Error: vsg::Pipeline::createGraphics(...) failed to create VkPipeline.", result};
     }
+#endif
 }
 
 RayTracingPipeline::Implementation::~Implementation()

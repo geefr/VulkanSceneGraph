@@ -14,6 +14,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 #include <vsg/vk/Device.h>
 
+#if VK_HEADER_VERSION <= 130
+    #define VkResolveModeFlagBits VkResolveModeFlagBitsKHR
+    #define VK_RESOLVE_MODE_NONE VK_RESOLVE_MODE_NONE_KHR
+#endif
+
 namespace vsg
 {
     /// maps to VkAttachmentDescription

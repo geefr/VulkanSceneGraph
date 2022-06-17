@@ -32,6 +32,13 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 using namespace vsg;
 
+#if VK_HEADER_VERSION <= 130
+#define VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR 0x00000001
+#define VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT 0x00020000
+#endif
+
+#if ENABLE_RAY_TRACING
+
 /////////////////////////////////////////////////////////////////////////////////////////
 //
 // BuildAccelerationStructureCommand
@@ -82,7 +89,7 @@ void BuildAccelerationStructureCommand::setScratchBuffer(ref_ptr<Buffer>& scratc
     VkBufferDeviceAddressInfo devAddressInfo{VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO, nullptr, _scratchBuffer->vk(_device->deviceID)};
     _accelerationStructureInfo.scratchData.deviceAddress = extensions->vkGetBufferDeviceAddressKHR(_device->getDevice(), &devAddressInfo);
 }
-
+#endif
 /////////////////////////////////////////////////////////////////////////////////////////
 //
 // vsg::Context
@@ -278,8 +285,9 @@ void Context::copy(ref_ptr<BufferInfo> src, ref_ptr<BufferInfo> dest)
 
 bool Context::record()
 {
+#if ENABLE_RAY_TRACING
     if (commands.empty() && buildAccelerationStructureCommands.empty()) return false;
-
+#endif
     //auto before_compile = std::chrono::steady_clock::now();
 
     if (!fence)
@@ -311,11 +319,13 @@ bool Context::record()
     {
         scratchBuffer = vsg::createBufferAndMemory(device, scratchBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VK_SHARING_MODE_EXCLUSIVE, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
+#if ENABLE_RAY_TRACING
         for (auto& command : buildAccelerationStructureCommands)
         {
             command->setScratchBuffer(scratchBuffer);
             command->record(*commandBuffer);
         }
+#endif
     }
 
     vkEndCommandBuffer(*commandBuffer);
@@ -350,10 +360,12 @@ void Context::waitForCompletion()
         return;
     }
 
+#if ENABLE_RAY_TRACING
     if (commands.empty() && buildAccelerationStructureCommands.empty())
     {
         return;
     }
+#endif
 
     // we must wait for the queue to empty before we can safely clean up the commandBuffer
     uint64_t timeout = 1000000000;

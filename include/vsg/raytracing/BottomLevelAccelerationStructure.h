@@ -29,7 +29,9 @@ namespace vsg
 
     protected:
         // compiled data
+#if ENABLE_RAY_TRACING
         std::vector<VkAccelerationStructureGeometryKHR> _vkGeometries;
+#endif
     };
 
 } // namespace vsg
