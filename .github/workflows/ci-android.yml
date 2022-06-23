@@ -29,4 +29,4 @@ jobs:
       shell: bash
       run: 
         cmake . -DCMAKE_TOOLCHAIN_FILE=${{ steps.setup-ndk.outputs.ndk-path }}/build/cmake/android.toolchain.cmake -DANDROID_ABI=${{matrix.android-abi}} -DANDROID_PLATFORM=${{matrix.android-platform}} -DBUILD_SHARED_LIBS=${{matrix.build-shared}}
-        make -j 4 && make install
+        make -j4 && make install
