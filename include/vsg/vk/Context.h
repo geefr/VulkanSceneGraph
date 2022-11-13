@@ -34,8 +34,10 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 namespace vsg
 {
     // forward declare
+    class View;
     class ViewDependentState;
 
+    /// Helper command for settings up RayTracing structures.
     class VSG_DECLSPEC BuildAccelerationStructureCommand : public Inherit<Command, BuildAccelerationStructureCommand>
     {
     public:
@@ -45,7 +47,7 @@ namespace vsg
 
         void compile(Context&) override {}
         void record(CommandBuffer& commandBuffer) const override;
-        void setScratchBuffer(ref_ptr<Buffer>& scratchBuffer);
+        void setScratchBuffer(ref_ptr<Buffer> scratchBuffer);
 
         ref_ptr<Device> _device;
         VkAccelerationStructureBuildGeometryInfoKHR _accelerationStructureInfo;
@@ -59,6 +61,8 @@ namespace vsg
     };
     VSG_type_name(vsg::BuildAccelerationStructureCommand);
 
+    /// Context manages details about Device, View or other state during compile traversal.
+    /// The CompileTraversal uses the Device as it traverses the scene graph creating Vulkan objects and transferring any data to the GPU
     class VSG_DECLSPEC Context : public Inherit<Object, Context>
     {
     public:
@@ -73,6 +77,7 @@ namespace vsg
         const uint32_t deviceID = 0;
         ref_ptr<Device> device;
 
+        observer_ptr<View> view;
         uint32_t viewID = 0;
         ViewDependentState* viewDependentState = nullptr;
 
@@ -90,8 +95,8 @@ namespace vsg
         /// allocate or reuse a DescriptorSet::Implementation from the available DescriptorPool
         ref_ptr<DescriptorSet::Implementation> allocateDescriptorSet(DescriptorSetLayout* descriptorSetLayout);
 
-        /// reserve resources that may be needed during compile travversal..
-        void reserve(ResourceRequirements& requirements);
+        /// reserve resources that may be needed during compile traversal.
+        void reserve(const ResourceRequirements& requirements);
 
         // used by GraphicsPipeline.cpp
         ref_ptr<RenderPass> renderPass;

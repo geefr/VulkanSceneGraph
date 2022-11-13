@@ -10,10 +10,10 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 </editor-fold> */
 
+#include <vsg/app/Camera.h>
 #include <vsg/io/Options.h>
 #include <vsg/maths/transform.h>
 #include <vsg/nodes/MatrixTransform.h>
-#include <vsg/viewer/Camera.h>
 
 using namespace vsg;
 
@@ -272,7 +272,7 @@ bool t_decompose(const t_mat4<T>& m, t_vec3<T>& translation, t_quat<T>& rotation
         if (rm[2][2] > rm[i][i]) i = 2;
 
         // set up the orthogonal axis to the max diagonal.
-        int next[3] = {1, 2, 0};
+        const int next[3] = {1, 2, 0};
         int j = next[i];
         int k = next[j];
 

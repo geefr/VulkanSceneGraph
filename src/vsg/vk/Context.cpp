@@ -10,12 +10,12 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 </editor-fold> */
 
-#include <vsg/traversals/CompileTraversal.h>
-
 #include <vsg/commands/Commands.h>
 #include <vsg/commands/CopyAndReleaseBuffer.h>
 #include <vsg/commands/CopyAndReleaseImage.h>
 #include <vsg/commands/PipelineBarrier.h>
+#include <vsg/core/Version.h>
+#include <vsg/io/Logger.h>
 #include <vsg/io/Options.h>
 #include <vsg/nodes/Geometry.h>
 #include <vsg/nodes/Group.h>
@@ -24,11 +24,10 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <vsg/nodes/StateGroup.h>
 #include <vsg/state/DescriptorSet.h>
 #include <vsg/vk/CommandBuffer.h>
+#include <vsg/vk/Context.h>
 #include <vsg/vk/Extensions.h>
 #include <vsg/vk/RenderPass.h>
 #include <vsg/vk/State.h>
-
-#include <iostream>
 
 using namespace vsg;
 
@@ -75,12 +74,12 @@ void BuildAccelerationStructureCommand::record(CommandBuffer& commandBuffer) con
     vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR, 0, 1, &memoryBarrier, 0, 0, 0, 0);
 }
 
-void BuildAccelerationStructureCommand::setScratchBuffer(ref_ptr<Buffer>& scratchBuffer)
+void BuildAccelerationStructureCommand::setScratchBuffer(ref_ptr<Buffer> scratchBuffer)
 {
     _scratchBuffer = scratchBuffer;
     auto extensions = _device->getExtensions();
     VkBufferDeviceAddressInfo devAddressInfo{VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO, nullptr, _scratchBuffer->vk(_device->deviceID)};
-    _accelerationStructureInfo.scratchData.deviceAddress = extensions->vkGetBufferDeviceAddressKHR(_device->getDevice(), &devAddressInfo);
+    _accelerationStructureInfo.scratchData.deviceAddress = extensions->vkGetBufferDeviceAddressKHR(*_device, &devAddressInfo);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -105,6 +104,9 @@ Context::Context(const Context& context) :
     Inherit(context),
     deviceID(context.deviceID),
     device(context.device),
+    view(context.view),
+    viewID(context.viewID),
+    viewDependentState(context.viewDependentState),
     minimum_maxSets(context.minimum_maxSets),
     minimum_descriptorPoolSizes(context.minimum_descriptorPoolSizes),
     renderPass(context.renderPass),
@@ -129,7 +131,7 @@ ref_ptr<CommandBuffer> Context::getOrCreateCommandBuffer()
 {
     if (!commandBuffer)
     {
-        commandBuffer = vsg::CommandBuffer::create(device, commandPool);
+        commandBuffer = commandPool->allocate();
     }
 
     return commandBuffer;
@@ -139,7 +141,7 @@ ShaderCompiler* Context::getOrCreateShaderCompiler()
 {
     if (shaderCompiler) return shaderCompiler;
 
-#ifdef HAS_GLSLANG
+#if VSG_SUPPORTS_ShaderCompiler
     shaderCompiler = ShaderCompiler::create();
 
     if (device && device->getInstance())
@@ -198,7 +200,7 @@ ref_ptr<DescriptorSet::Implementation> Context::allocateDescriptorSet(Descriptor
     return dsi;
 }
 
-void Context::reserve(ResourceRequirements& requirements)
+void Context::reserve(const ResourceRequirements& requirements)
 {
     auto maxSets = requirements.computeNumDescriptorSets();
     auto descriptorPoolSizes = requirements.computeDescriptorPoolSizes();
@@ -358,12 +360,12 @@ void Context::waitForCompletion()
     VkResult result;
     while ((result = fence->wait(timeout)) == VK_TIMEOUT)
     {
-        std::cout << "Context::waitForCompletion() " << this << " fence->wait() timed out, trying again." << std::endl;
+        info("Context::waitForCompletion() ", this, " fence->wait() timed out, trying again.");
     }
 
     if (result != VK_SUCCESS)
     {
-        std::cout << "Context::waitForCompletion()  " << this << " fence->wait() failed with error. VkResult = " << result << std::endl;
+        info("Context::waitForCompletion()  ", this, " fence->wait() failed with error. VkResult = ", result);
     }
 
     commands.clear();

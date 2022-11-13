@@ -12,18 +12,17 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 </editor-fold> */
 
+#include <vsg/app/RecordTraversal.h>
 #include <vsg/core/ConstVisitor.h>
 #include <vsg/core/Visitor.h>
 #include <vsg/core/ref_ptr.h>
 #include <vsg/core/type_name.h>
 
-#include <vsg/traversals/RecordTraversal.h>
-
 namespace vsg
 {
 
-    // Use the Curiously Recurring Template Pattern
-    // to provide the classes versions of accept(..) and sizeofObject()
+    /// Inherit<> uses the Curiously Recurring Template Pattern
+    /// to provide the classes versions of create, accept(..), RTTI and sizeofObject()
     template<class ParentClass, class Subclass>
     class Inherit : public ParentClass
     {

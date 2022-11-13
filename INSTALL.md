@@ -17,16 +17,27 @@
 ---
 
 ## Prerequisites
+
 * C++17 compliant compiler i.e. g++ 7.3 or later, Clang 6.0 or later, Visual Studio S2017 or later.
-* [Vulkan](https://vulkan.lunarg.com/) 1.1 or later.
+* [Vulkan](https://vulkan.lunarg.com/) 1.1 or later.  You can use Vulkan (libs and headers) installed from repositoies or using VulkanSDK.
 * [CMake](https://www.cmake.org) 3.7 or later.
 
-The above dependency versions are known to work so they've been set as the current minimum, it may be possible to build against older versions. If you find success with older versions let us know and we can update the version info.
+## Optional dependenices
+
+* [glslang & SPIRV-Tools](https://github.com/KhronosGroup/glslang) are required when built-in GLSL -> SPIR-V (required by Vulkan) compilation is needed, such as when you need the VulkanSceneGraphs shader composition and compilation capailities. SPIRV-Tools nowadays is packaged separately on common linux distributions, but can be build as part of glslang. VulkanSDK provides glslang. Unless you know you don't require them for your application we recommend building the VulkanSceneGraph with glslang and SPIRV-Tools.
 
 ---
 
 ## Quick build instructions for Unix from the command line
 
+### Gentoo dependencies
+1. essential dependencies:
+	emerge dev-util/vulkan-tools
+
+2. optional dependencies:
+	emerge dev-util/glslang dev-util/spirv-tools 
+
+### Build
 Command line instructions for default build of static library (.a/.lib) in source:
 
     git clone https://github.com/vsg-dev/VulkanSceneGraph.git
@@ -43,6 +54,7 @@ Command line instructions for building shared library (.so/.lib + .dll) out of s
     cmake ../VulkanSceneGraph -DBUILD_SHARED_LIBS=ON
     make -j 8
     make install
+
 
 ---
 
@@ -163,7 +175,7 @@ For example, a bare minimum CMakeLists.txt file to compile a single file applica
 
 ## Detailed instructions for setting up your environment and building for Microsoft Windows
 
-The VSG has one dependency, the Vulkan SDK itself. LunarG provides a convenient installer for the Vulkan SDK and runtime on Windows.
+While not the only route to installing Vulkan libs an headers on Windows the most common approach is to use the Vulkan SDK. LunarG provides a convenient installer for the Vulkan SDK and runtime on Windows.
 
 [Vulkan Downloads](https://vulkan.lunarg.com/sdk/home#windows)
 
@@ -219,7 +231,7 @@ So now we have the Android NDK installed lets go ahead and fetch the VSG source 
 	-DCMAKE_ANDROID_NDK=/location/of/Android/sdk/ndk-bundle \
 	-DCMAKE_INSTALL_PREFIX=/usr/local/android
 
-Make sure you change the -DCMAKE_ANDROID_NDK path to the path of your NDK, typically this is the 'Android SDK Location'/ndk-bundle. Also note the -DCMAKE_INSTALL_PREFIX. This is where the VSG library and header will be installed. It's useful to change this from the default to seperate your Android version from your native OS version. Depending where you put it you may need to manually create the top level folder first depending on permissions.
+Make sure you change the -DCMAKE_ANDROID_NDK path to the path of your NDK, typically this is the 'Android SDK Location'/ndk-bundle. Also note the -DCMAKE_INSTALL_PREFIX. This is where the VSG library and header will be installed. It's useful to change this from the default to separate your Android version from your native OS version. Depending where you put it you may need to manually create the top level folder first depending on permissions.
 
 Now we've generated the make files we can simply run
 
@@ -231,7 +243,7 @@ That's it, you've built VSG for Android and installed the required headers and l
 
 ## Detailed instructions for setting up your environment and building for macOS
 
-macOS does not natively support Vulkan. However the excellent MoltenVK libary has been developed which translates Vulkan calls into the Metal equivalents allowing you to run Vulkan applications on macOS and iOS. This can be downloaded from the LunarG website and has been packaged in a way it's extremely similar to the other platform sdks.
+macOS does not natively support Vulkan. However the excellent MoltenVK library has been developed which translates Vulkan calls into the Metal equivalents allowing you to run Vulkan applications on macOS and iOS. This can be downloaded from the LunarG website and has been packaged in a way it's extremely similar to the other platform sdks.
 
 [Vulkan Downloads](https://vulkan.lunarg.com/sdk/home#mac)
 

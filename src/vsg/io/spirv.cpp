@@ -10,16 +10,15 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 </editor-fold> */
 
+#include <vsg/io/Logger.h>
 #include <vsg/io/spirv.h>
 #include <vsg/state/ShaderStage.h>
 #include <vsg/utils/ShaderCompiler.h>
 
-#include <iostream>
-
 using namespace vsg;
 
 template<typename T>
-bool readFile(T& buffer, const std::string& filename)
+bool readFile(T& buffer, const vsg::Path& filename)
 {
     std::ifstream fin(filename, std::ios::ate | std::ios::binary);
     if (!fin.is_open()) return false;
@@ -75,7 +74,7 @@ bool spirv::write(const vsg::Object* object, const vsg::Path& filename, vsg::ref
                 vsg::ShaderCompiler sc;
                 if (!sc.compile(vsg::ref_ptr<vsg::ShaderStage>(const_cast<vsg::ShaderStage*>(ss))))
                 {
-                    std::cout << "spirv::write() Failed compile to spv." << std::endl;
+                    warn("spirv::write() Failed compile to spv.");
                     return false;
                 }
             }

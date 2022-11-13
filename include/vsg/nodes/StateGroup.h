@@ -13,17 +13,21 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 </editor-fold> */
 
 #include <vsg/nodes/Group.h>
+#include <vsg/state/ArrayState.h>
 #include <vsg/state/StateCommand.h>
-#include <vsg/traversals/ArrayState.h>
-#include <vsg/traversals/CompileTraversal.h>
 
 #include <algorithm>
 
 namespace vsg
 {
+
     // forward declare
     class CommandBuffer;
 
+    /// StateGroup is a Group node that manages a list of StateCommands that are use during the RecordTraversal for applying state to subgraph
+    /// When the RecordTraversal encounters a The StateGroup the StateGroup::stateCommands are pushed to the appropriate vsg::State stacks
+    /// and when a Command is encountered during the RecordTraversal the current head of these State stacks are applied.  After traversing
+    /// the StateGroup's subgraph the StateGroup::stateCommands are popped from the vsg::State stacks.
     class VSG_DECLSPEC StateGroup : public Inherit<Group, StateGroup>
     {
     public:

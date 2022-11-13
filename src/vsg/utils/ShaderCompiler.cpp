@@ -10,6 +10,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 </editor-fold> */
 
+#include <vsg/core/Version.h>
+#include <vsg/io/Logger.h>
 #include <vsg/io/Options.h>
 #include <vsg/nodes/StateGroup.h>
 #include <vsg/raytracing/RayTracingPipeline.h>
@@ -17,23 +19,24 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <vsg/state/GraphicsPipeline.h>
 #include <vsg/utils/ShaderCompiler.h>
 
-#ifdef HAS_GLSLANG
+#if VSG_SUPPORTS_ShaderCompiler
 #    include <glslang/Public/ShaderLang.h>
 #    include <glslang/SPIRV/GlslangToSpv.h>
 
-#    include "ResourceLimits.cpp"
-#    include "ResourceLimits.h"
+#    if GLSLANG_EShLangRayGenNV
+// map NV variants to modern versions
+#        define GLSLANG_EShLangRayGen 1
+#        define EShLangRayGen EShLangRayGenNV
+#        define EShLangIntersect EShLangIntersectNV
+#        define EShLangAnyHit EShLangAnyHitNV
+#        define EShLangClosestHit EShLangClosestHitNV
+#        define EShLangMiss EShLangMissNV
+#        define EShLangCallable EShLangCallableNV
+#    endif
 #endif
 
 #include <algorithm>
 #include <iomanip>
-#include <iostream>
-#include <sstream>
-
-#if VK_VERSION_1_1 == 1
-#    define HAS_KHR_RAYTRACNG (VK_VERSION_1_1)
-#    define HAS_NV_MESHSHADER (VK_VERSION_1_1)
-#endif
 
 #ifndef VK_API_VERSION_MAJOR
 #    define VK_API_VERSION_MAJOR(version) (((uint32_t)(version) >> 22) & 0x7FU)
@@ -42,15 +45,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 using namespace vsg;
 
-#if 1
-#    define DEBUG_OUTPUT std::cout
-#else
-#    define DEBUG_OUTPUT \
-        if (false) std::cout
-#endif
-#define INFO_OUTPUT std::cout
-
-#ifdef HAS_GLSLANG
+#if VSG_SUPPORTS_ShaderCompiler
 static std::atomic_uint s_intialized = 0;
 
 static void s_initializeProcess()
@@ -68,6 +63,151 @@ static void s_finalizeProcess()
         glslang::FinalizeProcess();
     }
 }
+
+static TBuiltInResource s_defaultResourceLimits = {
+    32, // maxLights
+    6, // maxClipPlanes
+    32, // maxTextureUnits
+    32, // maxTextureCoords
+    64, // maxVertexAttribs
+
+    4096, // maxVertexUniformComponents
+    64, // maxVaryingFloats
+    32, // maxVertexTextureImageUnits
+    80, // maxCombinedTextureImageUnits
+    32, // maxTextureImageUnits
+
+    4096, // maxFragmentUniformComponents
+    32, // maxDrawBuffers
+    128, // maxVertexUniformVectors
+    8, // maxVaryingVectors
+    16, // maxFragmentUniformVectors
+
+    16, // maxVertexOutputVectors
+    15, // maxFragmentInputVectors
+    -8, // minProgramTexelOffset
+    7, // maxProgramTexelOffset
+    8, // maxClipDistances
+
+    65535, // maxComputeWorkGroupCountX
+    65535, // maxComputeWorkGroupCountY
+    65535, // maxComputeWorkGroupCountZ
+    1024, // maxComputeWorkGroupSizeX
+    1024, // maxComputeWorkGroupSizeY
+
+    64, // maxComputeWorkGroupSizeZ
+    1024, // maxComputeUniformComponents
+    16, // maxComputeTextureImageUnits
+    8, // maxComputeImageUniforms
+    8, // maxComputeAtomicCounters
+
+    1, // maxCombinedAtomicCounterBuffers
+    60, // maxVaryingComponents
+    64, // maxVertexOutputComponents
+    64, // maxGeometryInputComponents
+    128, // maxGeometryOutputComponents
+
+    128, // maxFragmentInputComponents
+    8, // maxImageUnits
+    8, // maxCombinedImageUnitsAndFragmentOutputs
+    8, // maxCombinedShaderOutputResources
+    0, // maxImageSamples
+
+    0, // maxVertexImageUniforms
+    0, // maxTessControlImageUniforms
+    0, // maxTessEvaluationImageUniforms
+    0, // maxGeometryImageUniforms
+    8, // maxFragmentImageUniforms
+
+    8, // maxCombinedImageUniforms
+    16, // maxGeometryTextureImageUnits
+    256, // maxGeometryOutputVertices
+    1024, // maxGeometryTotalOutputComponents
+    1024, // maxGeometryUniformComponents
+
+    64, // maxGeometryVaryingComponents
+    128, // maxTessControlInputComponents
+    128, // maxTessControlOutputComponents
+    16, // maxTessControlTextureImageUnits
+    1024, // maxTessControlUniformComponents
+
+    4096, // maxTessControlTotalOutputComponents
+    128, // maxTessEvaluationInputComponents
+    128, // maxTessEvaluationOutputComponents
+    16, // maxTessEvaluationTextureImageUnits
+    1024, // maxTessEvaluationUniformComponents
+
+    120, // maxTessPatchComponents
+    32, // maxPatchVertices
+    64, // maxTessGenLevel
+    16, // maxViewports
+    0, // maxVertexAtomicCounters
+
+    0, // maxTessControlAtomicCounters
+    0, // maxTessEvaluationAtomicCounters
+    0, // maxGeometryAtomicCounters
+    8, // maxFragmentAtomicCounters
+    8, // maxCombinedAtomicCounters
+
+    1, // maxAtomicCounterBindings
+    0, // maxVertexAtomicCounterBuffers
+    0, // maxTessControlAtomicCounterBuffers
+    0, // maxTessEvaluationAtomicCounterBuffers
+    0, // maxGeometryAtomicCounterBuffers
+
+    1, // maxFragmentAtomicCounterBuffers
+    1, // maxCombinedAtomicCounterBuffers
+    16384, // maxAtomicCounterBufferSize
+    4, // maxTransformFeedbackBuffers
+    64, // maxTransformFeedbackInterleavedComponents
+
+    8, // maxCullDistances
+    8, // maxCombinedClipAndCullDistances
+    4, // maxSamples
+    256, // maxMeshOutputVerticesNV
+    512, // maxMeshOutputPrimitivesNV
+
+    32, // maxMeshWorkGroupSizeX_NV
+    1,  // maxMeshWorkGroupSizeY_NV
+    1, // maxMeshWorkGroupSizeZ_NV
+    32, // maxTaskWorkGroupSizeX_NV
+    1, // maxTaskWorkGroupSizeY_NV
+
+    1, // maxTaskWorkGroupSizeZ_NV
+    4, // maxMeshViewCountNV
+
+#ifdef GLSLANG_ResourceLimits_maxMeshViewCountEXT
+    1, // maxMeshOutputVerticesEXT
+    1, // maxMeshOutputPrimitivesEXT
+    1, // maxMeshWorkGroupSizeX_EXT
+
+    1, // maxMeshWorkGroupSizeY_EXT
+    1, // maxMeshWorkGroupSizeZ_EXT
+    1, // maxTaskWorkGroupSizeX_EXT
+    1, // maxTaskWorkGroupSizeY_EXT
+    1, // maxTaskWorkGroupSizeZ_EXT
+
+    1, // maxMeshViewCountEXT
+#endif
+
+#ifdef GLSLANG_ResourceLimits_maxDualSourceDrawBuffersEXT
+    1, // maxDualSourceDrawBuffersEXT
+#endif
+
+    {
+        1,  // nonInductiveForLoops
+        1, // whileLoops
+        1, // doWhileLoops
+        1, // generalAttributeMatrixVectorIndexing
+        1, // generalVaryingIndexing
+
+        1, // generalVaryingIndexing
+        1, // generalSamplerIndexing
+        1, // generalVariableIndexing
+        1  // generalConstantMatrixVectorIndexing
+    }
+};
+
 #endif
 
 std::string debugFormatShaderSource(const std::string& source)
@@ -93,12 +233,17 @@ ShaderCompiler::ShaderCompiler() :
 
 ShaderCompiler::~ShaderCompiler()
 {
-#ifdef HAS_GLSLANG
+#if VSG_SUPPORTS_ShaderCompiler
     s_finalizeProcess();
 #endif
 }
 
-#ifdef HAS_GLSLANG
+bool ShaderCompiler::supported() const
+{
+    return VSG_SUPPORTS_ShaderCompiler == 1;
+}
+
+#if VSG_SUPPORTS_ShaderCompiler
 bool ShaderCompiler::compile(ShaderStages& shaders, const std::vector<std::string>& defines, ref_ptr<const Options> options)
 {
     // need to balance the inits.
@@ -117,18 +262,14 @@ bool ShaderCompiler::compile(ShaderStages& shaders, const std::vector<std::strin
         case (VK_SHADER_STAGE_GEOMETRY_BIT): return "Geometry Shader";
         case (VK_SHADER_STAGE_FRAGMENT_BIT): return "Fragment Shader";
         case (VK_SHADER_STAGE_COMPUTE_BIT): return "Compute Shader";
-#    ifdef HAS_KHR_RAYTRACNG
         case (VK_SHADER_STAGE_RAYGEN_BIT_KHR): return "RayGen Shader";
         case (VK_SHADER_STAGE_ANY_HIT_BIT_KHR): return "Any Hit Shader";
         case (VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR): return "Closest Hit Shader";
         case (VK_SHADER_STAGE_MISS_BIT_KHR): return "Miss Shader";
         case (VK_SHADER_STAGE_INTERSECTION_BIT_KHR): return "Intersection Shader";
         case (VK_SHADER_STAGE_CALLABLE_BIT_KHR): return "Callable Shader";
-#    endif
-#    ifdef HAS_NV_MESHSHADER
         case (VK_SHADER_STAGE_TASK_BIT_NV): return "Task Shader";
         case (VK_SHADER_STAGE_MESH_BIT_NV): return "Mesh Shader";
-#    endif
         default: return "Unknown Shader Type";
         }
         return "";
@@ -138,7 +279,7 @@ bool ShaderCompiler::compile(ShaderStages& shaders, const std::vector<std::strin
     using TShaders = std::list<std::unique_ptr<glslang::TShader>>;
     TShaders tshaders;
 
-    TBuiltInResource builtInResources = glslang::DefaultTBuiltInResource;
+    auto builtInResources = s_defaultResourceLimits;
 
     StageShaderMap stageShaderMap;
     std::unique_ptr<glslang::TProgram> program(new glslang::TProgram);
@@ -146,6 +287,7 @@ bool ShaderCompiler::compile(ShaderStages& shaders, const std::vector<std::strin
     for (auto& vsg_shader : shaders)
     {
         EShLanguage envStage = EShLangCount;
+
         glslang::EShTargetLanguageVersion minTargetLanguageVersion = glslang::EShTargetSpv_1_0;
 
         switch (vsg_shader->stage)
@@ -156,7 +298,7 @@ bool ShaderCompiler::compile(ShaderStages& shaders, const std::vector<std::strin
         case (VK_SHADER_STAGE_GEOMETRY_BIT): envStage = EShLangGeometry; break;
         case (VK_SHADER_STAGE_FRAGMENT_BIT): envStage = EShLangFragment; break;
         case (VK_SHADER_STAGE_COMPUTE_BIT): envStage = EShLangCompute; break;
-#    ifdef HAS_KHR_RAYTRACNG
+#    ifdef GLSLANG_EShLangRayGen
         case (VK_SHADER_STAGE_RAYGEN_BIT_KHR):
             envStage = EShLangRayGen;
             minTargetLanguageVersion = glslang::EShTargetSpv_1_4;
@@ -181,15 +323,16 @@ bool ShaderCompiler::compile(ShaderStages& shaders, const std::vector<std::strin
             envStage = EShLangCallable;
             minTargetLanguageVersion = glslang::EShTargetSpv_1_4;
             break;
+#    endif
         case (VK_SHADER_STAGE_TASK_BIT_NV): envStage = EShLangTaskNV; break;
         case (VK_SHADER_STAGE_MESH_BIT_NV): envStage = EShLangMeshNV; break;
-#    endif
+
         default: break;
         }
 
         if (envStage == EShLangCount)
         {
-            INFO_OUTPUT << " Warning ShaderCompiler::compile() unsupported stage : " << vsg_shader->stage << std::endl;
+            warn("ShaderCompiler::compile() unsupported stage : ", vsg_shader->stage);
             return false;
         }
 
@@ -210,8 +353,10 @@ bool ShaderCompiler::compile(ShaderStages& shaders, const std::vector<std::strin
         shader->setEnvTarget(glslang::EShTargetSpv, targetLanguageVersion);
 
         std::string finalShaderSource = vsg::insertIncludes(vsg_shader->module->source, options);
-        if (!settings->defines.empty()) finalShaderSource = combineSourceAndDefines(finalShaderSource, settings->defines);
-        if (!defines.empty()) finalShaderSource = combineSourceAndDefines(finalShaderSource, defines);
+
+        std::vector<std::string> combinedDefines(defines);
+        for (auto& define : settings->defines) combinedDefines.push_back(define);
+        if (!combinedDefines.empty()) finalShaderSource = combineSourceAndDefines(finalShaderSource, combinedDefines);
 
         const char* str = finalShaderSource.c_str();
         shader->setStrings(&str, 1);
@@ -221,58 +366,44 @@ bool ShaderCompiler::compile(ShaderStages& shaders, const std::vector<std::strin
 
         if (parseResult)
         {
-#    if 0
-            INFO_OUTPUT << "Successful compile" << std::endl;
-            INFO_OUTPUT << debugFormatShaderSource(finalShaderSource) << std::endl;
-            INFO_OUTPUT << std::endl;
-#    endif
-            program->addShader(shader);
+            debug("Successful compile\n", debugFormatShaderSource(finalShaderSource), "\n");
 
+            program->addShader(shader);
             stageShaderMap[envStage] = vsg_shader;
         }
         else
         {
             // print error information
-            INFO_OUTPUT << std::endl
-                        << "----  " << getFriendlyNameForShader(vsg_shader) << "  ----" << std::endl
-                        << std::endl;
-            INFO_OUTPUT << debugFormatShaderSource(finalShaderSource) << std::endl;
-            INFO_OUTPUT << "Warning: GLSL source failed to parse." << std::endl;
-            INFO_OUTPUT << "glslang info log: " << std::endl
-                        << shader->getInfoLog();
-            DEBUG_OUTPUT << "glslang debug info log: " << std::endl
-                         << shader->getInfoDebugLog();
-            INFO_OUTPUT << "--------" << std::endl;
+            warn("\n----  ", getFriendlyNameForShader(vsg_shader), "  ---- \n");
+            warn(debugFormatShaderSource(finalShaderSource));
+            warn("GLSL source failed to parse.");
+            warn("glslang info log:\n", shader->getInfoLog());
+            info("glslang debug info log: \n", shader->getInfoDebugLog());
+            warn("--------");
         }
     }
 
     if (stageShaderMap.empty() || stageShaderMap.size() != shaders.size())
     {
-        DEBUG_OUTPUT << "ShaderCompiler::compile(Shaders& shaders) stageShaderMap.size() != shaders.size()" << std::endl;
+        debug("ShaderCompiler::compile(Shaders& shaders) stageShaderMap.size() != shaders.size()");
         return false;
     }
 
     EShMessages messages = EShMsgDefault;
     if (!program->link(messages))
     {
-        INFO_OUTPUT << std::endl
-                    << "----  Program  ----" << std::endl
-                    << std::endl;
+        warn("\n----  Program  ----\n");
 
         for (auto& vsg_shader : shaders)
         {
-            INFO_OUTPUT << std::endl
-                        << getFriendlyNameForShader(vsg_shader) << ":" << std::endl
-                        << std::endl;
-            INFO_OUTPUT << debugFormatShaderSource(vsg_shader->module->source) << std::endl;
+            warn("\n", getFriendlyNameForShader(vsg_shader), ":\n");
+            warn(debugFormatShaderSource(vsg_shader->module->source));
         }
 
-        INFO_OUTPUT << "Warning: Program failed to link." << std::endl;
-        INFO_OUTPUT << "glslang info log: " << std::endl
-                    << program->getInfoLog();
-        DEBUG_OUTPUT << "glslang debug info log: " << std::endl
-                     << program->getInfoDebugLog();
-        INFO_OUTPUT << "--------" << std::endl;
+        warn("Program failed to link.");
+        warn("glslang info log: ", program->getInfoLog());
+        warn("glslang debug info log: ", program->getInfoDebugLog());
+        warn("--------");
 
         return false;
     }
@@ -295,7 +426,7 @@ bool ShaderCompiler::compile(ShaderStages& shaders, const std::vector<std::strin
 #else
 bool ShaderCompiler::compile(ShaderStages&, const std::vector<std::string>&, ref_ptr<const Options> /*options*/)
 {
-    std::cout << "ShaderCompile::compile(..) not supported," << std::endl;
+    warn("ShaderCompile::compile(..) not supported,");
     return false;
 }
 #endif
@@ -354,12 +485,12 @@ std::string ShaderCompiler::combineSourceAndDefines(const std::string& source, c
         return str.substr(start + 1, (end - start) - 1);
     };
 
-    auto split = [](const std::string& str, const char& seperator) {
+    auto split = [](const std::string& str, const char& separator) {
         std::vector<std::string> elements;
 
         std::string::size_type prev_pos = 0, pos = 0;
 
-        while ((pos = str.find(seperator, pos)) != std::string::npos)
+        while ((pos = str.find(separator, pos)) != std::string::npos)
         {
             auto substring = str.substr(prev_pos, pos - prev_pos);
             elements.push_back(substring);

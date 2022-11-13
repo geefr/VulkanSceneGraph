@@ -11,9 +11,10 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 </editor-fold> */
 
 #include <vsg/core/compare.h>
+#include <vsg/io/Logger.h>
 #include <vsg/io/Options.h>
 #include <vsg/state/ViewDependentState.h>
-#include <vsg/traversals/CompileTraversal.h>
+#include <vsg/vk/Context.h>
 
 using namespace vsg;
 
@@ -109,9 +110,18 @@ void BindViewDescriptorSets::record(CommandBuffer& commandBuffer) const
 //
 // ViewDependentState
 //
-ViewDependentState::ViewDependentState(uint32_t maxNumberLights)
+ViewDependentState::ViewDependentState(uint32_t maxNumberLights) :
+    lightData(vec4Array::create(maxNumberLights)) // spot light requires 3 vec4's per light
 {
-    lightData = vec4Array::create(maxNumberLights); // spot light requires 3 vec4's per light
+    lightData->properties.dataVariance = DYNAMIC_DATA_TRANSFER_AFTER_RECORD;
+    lightDataBufferInfo = BufferInfo::create(lightData.get());
+
+    DescriptorSetLayoutBindings descriptorBindings{
+        VkDescriptorSetLayoutBinding{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}};
+
+    descriptorSetLayout = DescriptorSetLayout::create(descriptorBindings);
+    lightDescriptor = DescriptorBuffer::create(BufferInfoList{lightDataBufferInfo}, 0); // hardwired position for now
+    lightDescriptorSet = DescriptorSet::create(descriptorSetLayout, Descriptors{lightDescriptor});
 }
 
 ViewDependentState::~ViewDependentState()
@@ -120,33 +130,13 @@ ViewDependentState::~ViewDependentState()
 
 void ViewDependentState::compile(Context& context)
 {
-    //std::cout<<"ViewDependentState::compile()"<<std::endl;
-    if (!bufferedDescriptors.empty()) return;
-
-    DescriptorSetLayoutBindings descriptorBindings{
-        VkDescriptorSetLayoutBinding{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}};
-
-    descriptorSetLayout = DescriptorSetLayout::create(descriptorBindings);
-    descriptorSetLayout->compile(context);
-
-    int numBuffers = 3;
-    for (int i = 0; i < numBuffers; ++i)
-    {
-        auto lightDescriptor = vsg::DescriptorBuffer::create(lightData, 0); // hardwired position for now
-        auto descriptorSet = DescriptorSet::create(descriptorSetLayout, Descriptors{lightDescriptor});
-        descriptorSet->compile(context);
-
-        bufferedDescriptors.push_back(DescriptorPair{lightDescriptor, descriptorSet});
-    }
+    //info("ViewDependentState::compile()");
+    lightDescriptorSet->compile(context);
 }
 
 void ViewDependentState::clear()
 {
-    // advance index
-    ++bufferIndex;
-    if (bufferIndex >= bufferedDescriptors.size()) bufferIndex = 0;
-
-    //std::cout<<"ViewDependentState::clear() bufferIndex = "<<bufferIndex<<std::endl;
+    //debug("ViewDependentState::clear() bufferIndex = ", bufferIndex);
 
     // clear data
     ambientLights.clear();
@@ -157,17 +147,19 @@ void ViewDependentState::clear()
 
 void ViewDependentState::pack()
 {
-    // std::cout<<"ViewDependentState::pack() ambient "<<ambientLights.size()<<", diffuse "<<directionalLights.size()<<", point "<<pointLights.size()<<", spot "<<spotLights.size()<<std::endl;
+    //debug("ViewDependentState::pack() ambient ", ambientLights.size(), ", diffuse ", directionalLights.size(), ", point ", pointLights.size(), ", spot ", spotLights.size());
 
     auto light_itr = lightData->begin();
+    lightData->dirty();
 
     (*light_itr++) = vec4(static_cast<float>(ambientLights.size()),
                           static_cast<float>(directionalLights.size()),
                           static_cast<float>(pointLights.size()),
                           static_cast<float>(spotLights.size()));
 
-    for (auto& [mv, light] : ambientLights)
+    for (auto& entry : ambientLights)
     {
+        auto light = entry.second;
         (*light_itr++).set(light->color.r, light->color.g, light->color.b, light->intensity);
     }
 
@@ -198,27 +190,13 @@ void ViewDependentState::pack()
 #if 0
     for(auto itr = lightData->begin(); itr != light_itr; ++itr)
     {
-        std::cout<<"   "<<*itr<<std::endl;
+        debug("   ", *itr);
     }
 #endif
 }
 
-void ViewDependentState::copy()
-{
-    //    std::cout<<"ViewDependentState::copy()"<<std::endl;
-    if (bufferIndex >= bufferedDescriptors.size()) return;
-
-    const auto& descriptorData = bufferedDescriptors[bufferIndex];
-    for (auto& bufferInfo : descriptorData.lightDescriptor->bufferInfoList)
-    {
-        bufferInfo->copyDataToBuffer();
-    }
-}
-
 void ViewDependentState::bindDescriptorSets(CommandBuffer& commandBuffer, VkPipelineBindPoint pipelineBindPoint, VkPipelineLayout layout, uint32_t firstSet)
 {
-    if (bufferIndex >= bufferedDescriptors.size()) return;
-
-    auto vk = bufferedDescriptors[bufferIndex].descriptorSet->vk(commandBuffer.deviceID);
+    auto vk = lightDescriptorSet->vk(commandBuffer.deviceID);
     vkCmdBindDescriptorSets(commandBuffer, pipelineBindPoint, layout, firstSet, 1, &vk, 0, nullptr);
 }

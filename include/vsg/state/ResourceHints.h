@@ -17,6 +17,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 namespace vsg
 {
 
+    /// ResourceHints provides settings that help preallocation of Vulkan resources and memory.
     class VSG_DECLSPEC ResourceHints : public Inherit<Object, ResourceHints>
     {
     public:
@@ -29,8 +30,7 @@ namespace vsg
         DescriptorPoolSizes descriptorPoolSizes;
 
         VkDeviceSize minimumBufferSize = 16 * 1024 * 1024;
-        VkDeviceSize minimumBufferDeviceMemorySize = 16 * 1024 * 1024;
-        VkDeviceSize minimumImageDeviceMemorySize = 16 * 1024 * 1024;
+        VkDeviceSize minimumDeviceMemorySize = 16 * 1024 * 1024;
 
         void read(Input& input) override;
         void write(Output& output) const override;

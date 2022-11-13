@@ -28,11 +28,14 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 #include <vsg/io/FileSystem.h>
 
+#include <set>
 #include <unordered_map>
 
 namespace vsg
 {
 
+    /// Base class that provides a means of writing out a range of data types to an output stream.
+    /// Used by vsg::Object::write(Output&) implementations across the VSG to provide native serialization to binary/ascii files
     class VSG_DECLSPEC Output
     {
     public:
@@ -139,7 +142,7 @@ namespace vsg
         }
 
         template<typename T>
-        void writeValues(const char* propertyName, const T& values)
+        void writeValues(const char* propertyName, const std::vector<T>& values)
         {
             uint32_t numElements = static_cast<uint32_t>(values.size());
             write(propertyName, numElements);
@@ -150,7 +153,19 @@ namespace vsg
             }
         }
 
-        // match propertyname and write value(s)
+        template<typename T>
+        void writeValues(const char* propertyName, const std::set<T>& values)
+        {
+            uint32_t numElements = static_cast<uint32_t>(values.size());
+            write(propertyName, numElements);
+
+            for (auto& v : values)
+            {
+                write("element", v);
+            }
+        }
+
+        /// match propertyname and write value(s)
         template<typename... Args>
         void write(const char* propertyName, Args&... args)
         {

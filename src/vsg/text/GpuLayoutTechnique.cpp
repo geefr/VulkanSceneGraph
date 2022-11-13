@@ -14,6 +14,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <vsg/commands/Commands.h>
 #include <vsg/commands/Draw.h>
 #include <vsg/core/Array2D.h>
+#include <vsg/io/Logger.h>
 #include <vsg/io/read.h>
 #include <vsg/io/write.h>
 #include <vsg/state/BindDescriptorSet.h>
@@ -27,11 +28,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <vsg/text/GpuLayoutTechnique.h>
 #include <vsg/text/StandardLayout.h>
 #include <vsg/text/Text.h>
-#include <vsg/utils/GraphicsPipelineConfig.h>
+#include <vsg/utils/GraphicsPipelineConfigurator.h>
 #include <vsg/utils/ShaderSet.h>
 #include <vsg/utils/SharedObjects.h>
-
-#include <iostream>
 
 using namespace vsg;
 
@@ -43,9 +42,12 @@ void assignValue(T& dest, const T& src, bool& updated)
     updated = true;
 }
 
-void GpuLayoutTechnique::setup(Text* text, uint32_t minimumAllocation)
+void GpuLayoutTechnique::setup(Text* text, uint32_t minimumAllocation, ref_ptr<const Options> options)
 {
     auto layout = text->layout;
+    if (!layout) return;
+
+    textExtents = layout->extents(text->text, *(text->font));
 
     bool textLayoutUpdated = false;
     bool textArrayUpdated = false;
@@ -56,6 +58,7 @@ void GpuLayoutTechnique::setup(Text* text, uint32_t minimumAllocation)
         ref_ptr<uintArray>& textArray;
         bool& updated;
         uint32_t minimumSize = 0;
+        uint32_t allocatedSize = 0;
         uint32_t size = 0;
 
         ConvertString(Font& in_font, ref_ptr<uintArray>& in_textArray, bool& in_updated, uint32_t in_minimumSize) :
@@ -64,16 +67,20 @@ void GpuLayoutTechnique::setup(Text* text, uint32_t minimumAllocation)
             updated(in_updated),
             minimumSize(in_minimumSize) {}
 
-        void allocate(uint32_t allocationSize)
+        void allocate(uint32_t requiredSize)
         {
-            size = allocationSize;
+            size = requiredSize;
 
-            if (allocationSize < minimumSize) allocationSize = minimumSize;
-            if (!textArray || allocationSize > static_cast<uint32_t>(textArray->valueCount()))
+            if (textArray && requiredSize < static_cast<uint32_t>(textArray->valueCount()))
             {
-                updated = true;
-                textArray = uintArray::create(allocationSize, 0u);
+                allocatedSize = static_cast<uint32_t>(textArray->valueCount());
+                return;
             }
+
+            allocatedSize = std::max(requiredSize, minimumSize);
+            textArray = uintArray::create(allocatedSize, 0u);
+
+            updated = true;
         }
 
         void apply(const stringValue& text) override
@@ -121,6 +128,8 @@ void GpuLayoutTechnique::setup(Text* text, uint32_t minimumAllocation)
     ConvertString convert(*(text->font), textArray, textArrayUpdated, minimumAllocation);
     text->text->accept(convert);
 
+    if (convert.allocatedSize == 0) return;
+
     uint32_t num_quads = convert.size;
 
     // TODO need to reallocate DescriptorBuffer if textArray changes size?
@@ -129,6 +138,7 @@ void GpuLayoutTechnique::setup(Text* text, uint32_t minimumAllocation)
     // set up the layout data in a form digestible by the GPU.
     if (!layoutValue) layoutValue = TextLayoutValue::create();
 
+    bool billboard = false;
     auto& layoutStruct = layoutValue->value();
     if (auto standardLayout = layout.cast<StandardLayout>(); standardLayout)
     {
@@ -138,7 +148,15 @@ void GpuLayoutTechnique::setup(Text* text, uint32_t minimumAllocation)
         assignValue(layoutStruct.color, standardLayout->color, textLayoutUpdated);
         assignValue(layoutStruct.outlineColor, standardLayout->outlineColor, textLayoutUpdated);
         assignValue(layoutStruct.outlineWidth, standardLayout->outlineWidth, textLayoutUpdated);
+
+        billboard = standardLayout->billboard;
+        assignValue(layoutStruct.billboardAutoScaleDistance, standardLayout->billboardAutoScaleDistance, textLayoutUpdated);
     }
+
+    // assign alignment offset
+    auto alignment = layout->alignment(text->text, *(text->font));
+    assignValue(layoutStruct.horizontalAlignment, alignment.x, textLayoutUpdated);
+    assignValue(layoutStruct.verticalAlignment, alignment.y, textLayoutUpdated);
 
     if (!layoutDescriptor) layoutDescriptor = DescriptorBuffer::create(layoutValue, 0, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
@@ -159,20 +177,28 @@ void GpuLayoutTechnique::setup(Text* text, uint32_t minimumAllocation)
     else
         draw->instanceCount = num_quads;
 
-    // create StateGroup as the root of the scene/command graph to hold the GraphicsProgram, and binding of Descriptors to decorate the whole graph
-    if (!scenegraph)
-    {
-        scenegraph = StateGroup::create();
+    ref_ptr<StateGroup> stateGroup = scenegraph.cast<StateGroup>();
 
-        auto shaderSet = createTextShaderSet(text->font->options);
-        auto config = vsg::GraphicsPipelineConfig::create(shaderSet);
+    // create StateGroup as the root of the scene/command graph to hold the GraphicsProgram, and binding of Descriptors to decorate the whole graph
+    if (!stateGroup)
+    {
+        stateGroup = StateGroup::create();
+        scenegraph = stateGroup;
+
+        auto shaderSet = text->shaderSet ? text->shaderSet : createTextShaderSet(options);
+
+        auto config = vsg::GraphicsPipelineConfigurator::create(shaderSet);
 
         auto& sharedObjects = text->font->sharedObjects;
-        if (!sharedObjects && text->font->options) sharedObjects = text->font->options->sharedObjects;
         if (!sharedObjects) sharedObjects = SharedObjects::create();
 
         DataList arrays;
         config->assignArray(arrays, "inPosition", VK_VERTEX_INPUT_RATE_VERTEX, vertices);
+
+        if (billboard)
+        {
+            config->shaderHints->defines.insert("BILLBOARD");
+        }
 
         // set up sampler for atlas.
         auto sampler = Sampler::create();
@@ -204,7 +230,7 @@ void GpuLayoutTechnique::setup(Text* text, uint32_t minimumAllocation)
         uint32_t numVec4PerGlyph = static_cast<uint32_t>(sizeof(GlyphMetrics) / sizeof(vec4));
         uint32_t numGlyphs = static_cast<uint32_t>(text->font->glyphMetrics->valueCount());
 
-        auto glyphMetricsProxy = vec4Array2D::create(text->font->glyphMetrics, 0, stride, numVec4PerGlyph, numGlyphs, Data::Layout{VK_FORMAT_R32G32B32A32_SFLOAT});
+        auto glyphMetricsProxy = vec4Array2D::create(text->font->glyphMetrics, 0, stride, numVec4PerGlyph, numGlyphs, Data::Properties{VK_FORMAT_R32G32B32A32_SFLOAT});
 
         Descriptors descriptors;
         config->assignTexture(descriptors, "textureAtlas", text->font->atlas, sampler);
@@ -244,25 +270,25 @@ void GpuLayoutTechnique::setup(Text* text, uint32_t minimumAllocation)
         auto textArrayDescriptorSetLayout = DescriptorSetLayout::create(textArrayDescriptorBindings);
         if (sharedObjects) sharedObjects->share(textArrayDescriptorSetLayout);
 
-        config->additionalDescrptorSetLayout = textArrayDescriptorSetLayout;
+        config->additionalDescriptorSetLayout = textArrayDescriptorSetLayout;
 
         if (sharedObjects)
             sharedObjects->share(config, [](auto gpc) { gpc->init(); });
         else
             config->init();
 
-        scenegraph->add(config->bindGraphicsPipeline);
+        stateGroup->add(config->bindGraphicsPipeline);
 
         auto descriptorSetLayout = config->descriptorSetLayout;
         if (sharedObjects) sharedObjects->share(descriptorSetLayout);
         auto descriptorSet = vsg::DescriptorSet::create(descriptorSetLayout, descriptors);
         auto bindDescriptorSet = vsg::BindDescriptorSet::create(VK_PIPELINE_BIND_POINT_GRAPHICS, config->layout, 0, descriptorSet);
         if (sharedObjects) sharedObjects->share(bindDescriptorSet);
-        scenegraph->add(bindDescriptorSet);
+        stateGroup->add(bindDescriptorSet);
 
         auto textDescriptorSet = DescriptorSet::create(textArrayDescriptorSetLayout, Descriptors{layoutDescriptor, textDescriptor});
         bindTextDescriptorSet = vsg::BindDescriptorSet::create(VK_PIPELINE_BIND_POINT_GRAPHICS, config->layout, 1, textDescriptorSet);
-        scenegraph->add(bindTextDescriptorSet);
+        stateGroup->add(bindTextDescriptorSet);
 
         bindVertexBuffers = BindVertexBuffers::create(0, arrays);
 
@@ -270,7 +296,7 @@ void GpuLayoutTechnique::setup(Text* text, uint32_t minimumAllocation)
         auto drawCommands = Commands::create();
         drawCommands->addChild(bindVertexBuffers);
         drawCommands->addChild(draw);
-        scenegraph->addChild(drawCommands);
+        stateGroup->addChild(drawCommands);
     }
     else
     {
@@ -283,4 +309,8 @@ void GpuLayoutTechnique::setup(Text* text, uint32_t minimumAllocation)
             layoutDescriptor->copyDataListToBuffers();
         }
     }
+}
+void GpuLayoutTechnique::setup(TextGroup* textGroup, uint32_t minimumAllocation, ref_ptr<const Options> options)
+{
+    info("GpuLayoutTechnique::setup(", textGroup, ", ", minimumAllocation, options, ") not yet supported");
 }

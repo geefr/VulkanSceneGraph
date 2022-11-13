@@ -13,8 +13,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <vsg/core/compare.h>
 #include <vsg/io/Options.h>
 #include <vsg/state/Descriptor.h>
-#include <vsg/traversals/CompileTraversal.h>
-#include <vsg/vk/CommandBuffer.h>
+#include <vsg/vk/Context.h>
 
 using namespace vsg;
 
@@ -41,32 +40,16 @@ void Descriptor::read(Input& input)
 {
     Object::read(input);
 
-    if (input.version_greater_equal(0, 1, 4))
-    {
-        input.read("dstBinding", dstBinding);
-        input.read("dstArrayElement", dstArrayElement);
-    }
-    else
-    {
-        input.read("DstBinding", dstBinding);
-        input.read("DstArrayElement", dstArrayElement);
-    }
+    input.read("dstBinding", dstBinding);
+    input.read("dstArrayElement", dstArrayElement);
 }
 
 void Descriptor::write(Output& output) const
 {
     Object::write(output);
 
-    if (output.version_greater_equal(0, 1, 4))
-    {
-        output.write("dstBinding", dstBinding);
-        output.write("dstArrayElement", dstArrayElement);
-    }
-    else
-    {
-        output.write("DstBinding", dstBinding);
-        output.write("DstArrayElement", dstArrayElement);
-    }
+    output.write("dstBinding", dstBinding);
+    output.write("dstArrayElement", dstArrayElement);
 }
 
 void Descriptor::assignTo(Context& /*context*/, VkWriteDescriptorSet& wds) const

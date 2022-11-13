@@ -1,4 +1,5 @@
 
+#include <vsg/io/Logger.h>
 #include <vsg/io/read.h>
 #include <vsg/nodes/StateGroup.h>
 #include <vsg/nodes/VertexIndexDraw.h>
@@ -16,7 +17,7 @@
 #include <vsg/state/ViewportState.h>
 #include <vsg/state/material.h>
 #include <vsg/utils/Builder.h>
-#include <vsg/utils/GraphicsPipelineConfig.h>
+#include <vsg/utils/GraphicsPipelineConfigurator.h>
 
 using namespace vsg;
 
@@ -36,12 +37,14 @@ ref_ptr<StateGroup> Builder::createStateGroup(const StateInfo& stateInfo)
     }
     if (!shaderSet)
     {
-        //shaderSet = createFlatShadedShaderSet(options);
+        if (stateInfo.lighting)
+            shaderSet = createPhongShaderSet(options);
+        else
+            shaderSet = createFlatShadedShaderSet(options);
         //shaderSet = createPhysicsBasedRenderingShaderSet(options);
-        shaderSet = createPhongShaderSet(options);
     }
 
-    auto graphicsPipelineConfig = vsg::GraphicsPipelineConfig::create(shaderSet);
+    auto graphicsPipelineConfig = vsg::GraphicsPipelineConfigurator::create(shaderSet);
 
     auto& defines = graphicsPipelineConfig->shaderHints->defines;
 
@@ -60,7 +63,7 @@ ref_ptr<StateGroup> Builder::createStateGroup(const StateInfo& stateInfo)
 
         graphicsPipelineConfig->assignTexture(descriptors, "diffuseMap", stateInfo.image, sampler);
 
-        if (stateInfo.greyscale) defines.push_back("VSG_GREYSACLE_DIFFUSE_MAP");
+        if (stateInfo.greyscale) defines.insert("VSG_GREYSACLE_DIFFUSE_MAP");
     }
 
     if (stateInfo.displacementMap)
@@ -74,11 +77,12 @@ ref_ptr<StateGroup> Builder::createStateGroup(const StateInfo& stateInfo)
         graphicsPipelineConfig->assignTexture(descriptors, "displacementMap", stateInfo.displacementMap, sampler);
     }
 
-    // set up pass of material
-    auto mat = vsg::PhongMaterialValue::create();
-    mat->value().specular = vec4(0.5f, 0.5f, 0.5f, 1.0f);
-
-    graphicsPipelineConfig->assignUniform(descriptors, "material", mat);
+    if (auto& materialBinding = shaderSet->getUniformBinding("material"))
+    {
+        ref_ptr<Data> mat = materialBinding.data;
+        if (!mat) mat = vsg::PhongMaterialValue::create();
+        graphicsPipelineConfig->assignUniform(descriptors, "material", mat);
+    }
 
     if (sharedObjects) sharedObjects->share(descriptors);
 
@@ -88,7 +92,7 @@ ref_ptr<StateGroup> Builder::createStateGroup(const StateInfo& stateInfo)
         vdsl = sharedObjects->shared_default<ViewDescriptorSetLayout>();
     else
         vdsl = ViewDescriptorSetLayout::create();
-    graphicsPipelineConfig->additionalDescrptorSetLayout = vdsl;
+    graphicsPipelineConfig->additionalDescriptorSetLayout = vdsl;
 
     graphicsPipelineConfig->enableArray("vsg_Vertex", VK_VERTEX_INPUT_RATE_VERTEX, 12);
     graphicsPipelineConfig->enableArray("vsg_Normal", VK_VERTEX_INPUT_RATE_VERTEX, 12);
@@ -107,7 +111,7 @@ ref_ptr<StateGroup> Builder::createStateGroup(const StateInfo& stateInfo)
     if (stateInfo.two_sided)
     {
         graphicsPipelineConfig->rasterizationState->cullMode = VK_CULL_MODE_NONE;
-        defines.push_back("VSG_TWO_SIDED_LIGHTING");
+        defines.insert("VSG_TWO_SIDED_LIGHTING");
     }
 
     graphicsPipelineConfig->colorBlendState->attachments = ColorBlendState::ColorBlendAttachments{
@@ -142,7 +146,7 @@ ref_ptr<StateGroup> Builder::createStateGroup(const StateInfo& stateInfo)
     if (sharedObjects) sharedObjects->share(bindViewDescriptorSets);
     stateGroup->add(bindViewDescriptorSets);
 
-    // if (sharedObjects) sharedObjects->report(std::cout);
+    //if (sharedObjects) vsg::debug_stream([&](auto& fout) { sharedObjects->report(fout); });
 
     return stateGroup;
 }
@@ -168,8 +172,8 @@ void Builder::transform(const mat4& matrix, ref_ptr<vec3Array> vertices, ref_ptr
 vec3 Builder::y_texcoord(const StateInfo& info) const
 {
 
-    if ((info.image && info.image->getLayout().origin == Origin::TOP_LEFT) ||
-        (info.displacementMap && info.displacementMap->getLayout().origin == Origin::TOP_LEFT))
+    if ((info.image && info.image->properties.origin == Origin::TOP_LEFT) ||
+        (info.displacementMap && info.displacementMap->properties.origin == Origin::TOP_LEFT))
     {
         return {1.0f, -1.0f, 0.0f};
     }

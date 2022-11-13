@@ -20,6 +20,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 namespace vsg
 {
 
+    /// BindDescriptorSets state command encapsulates vkCmdBindDescriptorSets call and associated settings for multiple DescriptorSets.
     class VSG_DECLSPEC BindDescriptorSets : public Inherit<StateCommand, BindDescriptorSets>
     {
     public:
@@ -44,10 +45,11 @@ namespace vsg
         }
 
         /// vkCmdBindDescriptorSets settings
-        VkPipelineBindPoint pipelineBindPoint; // TODO not currently serialized
+        VkPipelineBindPoint pipelineBindPoint;
         ref_ptr<PipelineLayout> layout;
         uint32_t firstSet;
         DescriptorSets descriptorSets;
+        std::vector<uint32_t> dynamicOffsets;
 
         int compare(const Object& rhs_object) const override;
 
@@ -82,6 +84,8 @@ namespace vsg
     };
     VSG_type_name(vsg::BindDescriptorSets);
 
+    /// BindDescriptorSet state command encapsulates vkCmdBindDescriptorSets call and associated settings for a single DescriptorSet.
+    /// Functionality the same as assigning a single DescriptorSet to a BindDescriptorSets but has slightly lower memory footprint and CPU overhead.
     class VSG_DECLSPEC BindDescriptorSet : public Inherit<StateCommand, BindDescriptorSet>
     {
     public:
@@ -105,11 +109,22 @@ namespace vsg
         {
         }
 
+        /// convenience BindDescriptorSet constructor which creates and assigns the DescriptorSet required for specified descriptors.
+        BindDescriptorSet(VkPipelineBindPoint in_bindPoint, PipelineLayout* in_pipelineLayout, uint32_t in_firstSet, const vsg::Descriptors& in_descriptors) :
+            Inherit(1 + in_firstSet),
+            pipelineBindPoint(in_bindPoint),
+            layout(in_pipelineLayout),
+            firstSet(in_firstSet),
+            descriptorSet(vsg::DescriptorSet::create(in_pipelineLayout->setLayouts[in_firstSet], in_descriptors))
+        {
+        }
+
         // vkCmdBindDescriptorSets settings
-        VkPipelineBindPoint pipelineBindPoint; // TODO not currently serialized
+        VkPipelineBindPoint pipelineBindPoint;
         ref_ptr<PipelineLayout> layout;
         uint32_t firstSet;
         ref_ptr<DescriptorSet> descriptorSet;
+        std::vector<uint32_t> dynamicOffsets;
 
         int compare(const Object& rhs_object) const override;
 

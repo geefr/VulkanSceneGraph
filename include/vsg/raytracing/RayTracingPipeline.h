@@ -20,6 +20,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 namespace vsg
 {
 
+    /// RayTracingPipeline encapsulates vkCreateRayTracingPipelinesKHR call and associated settings.
+    /// Assigned to the scene graph using BindRayTracingPipeline.
     class VSG_DECLSPEC RayTracingPipeline : public Inherit<Object, RayTracingPipeline>
     {
     public:
@@ -63,7 +65,6 @@ namespace vsg
 
             VkPipeline _pipeline;
 
-            // TODO need to convert to use Implementation versions of RenderPass and PipelineLayout
             ref_ptr<Device> _device;
             ref_ptr<PipelineLayout> _pipelineLayout;
             ShaderStages _shaderStages;
@@ -79,6 +80,7 @@ namespace vsg
     };
     VSG_type_name(vsg::RayTracingPipeline);
 
+    /// BindRayTracingPipeline state command encapsulates vkCmdBindPipeline for a RayTracingPipeline.
     class VSG_DECLSPEC BindRayTracingPipeline : public Inherit<StateCommand, BindRayTracingPipeline>
     {
     public:

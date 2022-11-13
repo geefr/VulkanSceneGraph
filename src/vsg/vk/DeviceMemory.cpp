@@ -16,7 +16,6 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 #include <atomic>
 #include <cstring>
-#include <iostream>
 
 using namespace vsg;
 
@@ -53,13 +52,13 @@ DeviceMemory::DeviceMemory(Device* device, const VkMemoryRequirements& memRequir
     {
         static VkDeviceSize s_TotalDeviceMemoryAllocated = 0;
         s_TotalDeviceMemoryAllocated += memRequirements.size;
-        std::cout << "Device Local DeviceMemory::DeviceMemory() " << std::dec << memRequirements.size << ", " << memRequirements.alignment << ", " << memRequirements.memoryTypeBits << ",  s_TotalMemoryAllocated = " << s_TotalDeviceMemoryAllocated << std::endl;
+        debug("Device Local DeviceMemory::DeviceMemory() ", std::dec, memRequirements.size, ", ", memRequirements.alignment, ", ", memRequirements.memoryTypeBits, ",  s_TotalMemoryAllocated = ", s_TotalDeviceMemoryAllocated);
     }
     else
     {
         static VkDeviceSize s_TotalHostMemoryAllocated = 0;
         s_TotalHostMemoryAllocated += memRequirements.size;
-        std::cout << "Staging DeviceMemory::DeviceMemory()  " << std::dec << memRequirements.size << ", " << memRequirements.alignment << ", " << memRequirements.memoryTypeBits << ",  s_TotalMemoryAllocated = " << s_TotalHostMemoryAllocated << std::endl;
+        debug("Staging DeviceMemory::DeviceMemory()  ", std::dec, memRequirements.size, ", ", memRequirements.alignment, ", ", memRequirements.memoryTypeBits, ",  s_TotalMemoryAllocated = ", s_TotalHostMemoryAllocated);
     }
 #endif
 
@@ -80,7 +79,7 @@ DeviceMemory::~DeviceMemory()
     if (_deviceMemory)
     {
 #if DO_CHECK
-        std::cout << "DeviceMemory::~DeviceMemory() vkFreeMemory(*_device, " << _deviceMemory << ", _allocator);" << std::endl;
+        debug("DeviceMemory::~DeviceMemory() vkFreeMemory(*_device, ", _deviceMemory, ", _allocator);");
 #endif
 
         vkFreeMemory(*_device, _deviceMemory, _device->getAllocationCallbacks());
@@ -107,4 +106,40 @@ void DeviceMemory::copy(VkDeviceSize offset, VkDeviceSize size, const void* src_
     std::memcpy(buffer_data, src_data, (size_t)size);
 
     unmap();
+}
+
+MemorySlots::OptionalOffset DeviceMemory::reserve(VkDeviceSize size)
+{
+    std::scoped_lock<std::mutex> lock(_mutex);
+    return _memorySlots.reserve(size, _memoryRequirements.alignment);
+}
+
+void DeviceMemory::release(VkDeviceSize offset, VkDeviceSize size)
+{
+    std::scoped_lock<std::mutex> lock(_mutex);
+    _memorySlots.release(offset, size);
+}
+
+bool DeviceMemory::full() const
+{
+    std::scoped_lock<std::mutex> lock(_mutex);
+    return _memorySlots.full();
+}
+
+VkDeviceSize DeviceMemory::maximumAvailableSpace() const
+{
+    std::scoped_lock<std::mutex> lock(_mutex);
+    return _memorySlots.maximumAvailableSpace();
+}
+
+size_t DeviceMemory::totalAvailableSize() const
+{
+    std::scoped_lock<std::mutex> lock(_mutex);
+    return _memorySlots.totalAvailableSize();
+}
+
+size_t DeviceMemory::totalReservedSize() const
+{
+    std::scoped_lock<std::mutex> lock(_mutex);
+    return _memorySlots.totalReservedSize();
 }

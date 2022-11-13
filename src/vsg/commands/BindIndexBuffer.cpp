@@ -58,9 +58,14 @@ int BindIndexBuffer::compare(const Object& rhs_object) const
 void BindIndexBuffer::assignIndices(ref_ptr<vsg::Data> indexData)
 {
     if (indexData)
+    {
         indices = BufferInfo::create(indexData);
+        indexType = computeIndexType(indices->data);
+    }
     else
+    {
         indices = {};
+    }
 }
 
 void BindIndexBuffer::read(Input& input)
@@ -69,14 +74,7 @@ void BindIndexBuffer::read(Input& input)
 
     // read the key indices data
     ref_ptr<vsg::Data> indices_data;
-    if (input.version_greater_equal(0, 1, 4))
-    {
-        input.readObject("indices", indices_data);
-    }
-    else
-    {
-        input.readObject("Indices", indices_data);
-    }
+    input.readObject("indices", indices_data);
 
     assignIndices(indices_data);
 }
@@ -86,20 +84,10 @@ void BindIndexBuffer::write(Output& output) const
     Command::write(output);
 
     // write indices data
-    if (output.version_greater_equal(0, 1, 4))
-    {
-        if (indices)
-            output.writeObject("indices", indices->data);
-        else
-            output.writeObject("indices", nullptr);
-    }
+    if (indices)
+        output.writeObject("indices", indices->data);
     else
-    {
-        if (indices)
-            output.writeObject("Indices", indices->data);
-        else
-            output.writeObject("Indices", nullptr);
-    }
+        output.writeObject("indices", nullptr);
 }
 
 void BindIndexBuffer::compile(Context& context)
@@ -108,13 +96,10 @@ void BindIndexBuffer::compile(Context& context)
     if (!indices) return;
 
     // check if already compiled
-    if (!indices->requiresCopy(context.deviceID))
+    if (indices->requiresCopy(context.deviceID))
     {
-        return;
+        createBufferAndTransferData(context, {indices}, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE);
     }
-
-    if (createBufferAndTransferData(context, {indices}, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE))
-        indexType = computeIndexType(indices->data);
 }
 
 void BindIndexBuffer::record(CommandBuffer& commandBuffer) const

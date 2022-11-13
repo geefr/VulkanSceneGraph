@@ -10,14 +10,12 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 </editor-fold> */
 
+#include <vsg/app/View.h>
 #include <vsg/core/Exception.h>
 #include <vsg/core/compare.h>
 #include <vsg/io/Options.h>
 #include <vsg/state/DescriptorSet.h>
-#include <vsg/traversals/CompileTraversal.h>
-#include <vsg/viewer/View.h>
-#include <vsg/vk/CommandBuffer.h>
-#include <vsg/vk/DescriptorPool.h>
+#include <vsg/vk/Context.h>
 
 using namespace vsg;
 
@@ -51,42 +49,16 @@ void DescriptorSet::read(Input& input)
 {
     Object::read(input);
 
-    if (input.version_greater_equal(0, 1, 4))
-    {
-        input.read("setLayout", setLayout);
-        input.readObjects("descriptors", descriptors);
-    }
-    else
-    {
-        input.read("DescriptorSetLayout", setLayout);
-
-        descriptors.resize(input.readValue<uint32_t>("NumDescriptors"));
-        for (auto& descriptor : descriptors)
-        {
-            input.read("Descriptor", descriptor);
-        }
-    }
+    input.readObject("setLayout", setLayout);
+    input.readObjects("descriptors", descriptors);
 }
 
 void DescriptorSet::write(Output& output) const
 {
     Object::write(output);
 
-    if (output.version_greater_equal(0, 1, 4))
-    {
-        output.write("setLayout", setLayout);
-        output.writeObjects("descriptors", descriptors);
-    }
-    else
-    {
-        output.write("DescriptorSetLayout", setLayout);
-
-        output.writeValue<uint32_t>("NumDescriptors", descriptors.size());
-        for (auto& descriptor : descriptors)
-        {
-            output.write("Descriptor", descriptor);
-        }
-    }
+    output.writeObject("setLayout", setLayout);
+    output.writeObjects("descriptors", descriptors);
 }
 
 void DescriptorSet::compile(Context& context)
@@ -104,11 +76,11 @@ void DescriptorSet::compile(Context& context)
 
 void DescriptorSet::release(uint32_t deviceID)
 {
-    Implementation::recyle(_implementation[deviceID]);
+    Implementation::recycle(_implementation[deviceID]);
 }
 void DescriptorSet::release()
 {
-    for (auto& dsi : _implementation) Implementation::recyle(dsi);
+    for (auto& dsi : _implementation) Implementation::recycle(dsi);
     _implementation.clear();
 }
 
@@ -122,7 +94,8 @@ VkDescriptorSet DescriptorSet::vk(uint32_t deviceID) const
 // DescriptorSet::Implementation
 //
 DescriptorSet::Implementation::Implementation(DescriptorPool* descriptorPool, DescriptorSetLayout* descriptorSetLayout) :
-    _descriptorPool(descriptorPool)
+    _descriptorPool(descriptorPool),
+    _descriptorSetLayout(descriptorSetLayout)
 {
     auto device = descriptorPool->getDevice();
 
@@ -138,7 +111,7 @@ DescriptorSet::Implementation::Implementation(DescriptorPool* descriptorPool, De
     descriptSetAllocateInfo.pSetLayouts = &vkdescriptorSetLayout;
 
     // no need to locally lock DescriptorPool as the DescriptorSet::Implementation constructor should only be called by
-    // DescriptorPool::allocateDescriptorSet that will already have locked the DescriptorPool::mutex before calling this consrtuctor.
+    // DescriptorPool::allocateDescriptorSet that will already have locked the DescriptorPool::mutex before calling this constructor.
     // otherwise we'd need a : std::scoped_lock<std::mutex> lock(_descriptorPool->mutex);
 
     if (VkResult result = vkAllocateDescriptorSets(*device, &descriptSetAllocateInfo, &_descriptorSet); result != VK_SUCCESS)
@@ -156,10 +129,10 @@ DescriptorSet::Implementation::~Implementation()
     }
 }
 
-void DescriptorSet::Implementation::assign(Context& context, const Descriptors& descriptors)
+void DescriptorSet::Implementation::assign(Context& context, const Descriptors& in_descriptors)
 {
     // should we doing anything about previous _descriptor that may have been assigned?
-    _descriptors = descriptors;
+    _descriptors = in_descriptors;
 
     if (_descriptors.empty()) return;
 
@@ -167,18 +140,18 @@ void DescriptorSet::Implementation::assign(Context& context, const Descriptors& 
 
     for (size_t i = 0; i < _descriptors.size(); ++i)
     {
-        descriptors[i]->assignTo(context, descriptorWrites[i]);
+        _descriptors[i]->assignTo(context, descriptorWrites[i]);
         descriptorWrites[i].dstSet = _descriptorSet;
     }
 
     auto device = _descriptorPool->getDevice();
-    vkUpdateDescriptorSets(*device, static_cast<uint32_t>(descriptors.size()), descriptorWrites, 0, nullptr);
+    vkUpdateDescriptorSets(*device, static_cast<uint32_t>(_descriptors.size()), descriptorWrites, 0, nullptr);
 
     // clean up scratch memory so it can be reused.
     context.scratchMemory->release();
 }
 
-void DescriptorSet::Implementation::recyle(ref_ptr<DescriptorSet::Implementation>& dsi)
+void DescriptorSet::Implementation::recycle(ref_ptr<DescriptorSet::Implementation>& dsi)
 {
     if (dsi)
     {

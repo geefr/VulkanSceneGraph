@@ -11,12 +11,10 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 </editor-fold> */
 
 #include <vsg/core/compare.h>
+#include <vsg/io/Logger.h>
 #include <vsg/io/Options.h>
 #include <vsg/state/DescriptorBuffer.h>
-#include <vsg/traversals/CompileTraversal.h>
-#include <vsg/vk/CommandBuffer.h>
-
-#include <iostream>
+#include <vsg/vk/Context.h>
 
 using namespace vsg;
 
@@ -74,29 +72,14 @@ void DescriptorBuffer::read(Input& input)
 
     bufferInfoList.clear();
 
-    if (input.version_greater_equal(0, 4, 0))
+    bufferInfoList.resize(input.readValue<uint32_t>("dataList"));
+    for (auto& bufferInfo : bufferInfoList)
     {
-        bufferInfoList.resize(input.readValue<uint32_t>("dataList"));
-        for (auto& bufferInfo : bufferInfoList)
-        {
-            bufferInfo = vsg::BufferInfo::create();
-            bufferInfo->buffer = nullptr;
-            bufferInfo->offset = 0;
-            bufferInfo->range = 0;
-            input.readObject("data", bufferInfo->data);
-        }
-    }
-    else
-    {
-        bufferInfoList.resize(input.readValue<uint32_t>("NumData"));
-        for (auto& bufferInfo : bufferInfoList)
-        {
-            bufferInfo = vsg::BufferInfo::create();
-            bufferInfo->buffer = nullptr;
-            bufferInfo->offset = 0;
-            bufferInfo->range = 0;
-            input.readObject("Data", bufferInfo->data);
-        }
+        bufferInfo = vsg::BufferInfo::create();
+        bufferInfo->buffer = nullptr;
+        bufferInfo->offset = 0;
+        bufferInfo->range = 0;
+        input.readObject("data", bufferInfo->data);
     }
 }
 
@@ -104,27 +87,29 @@ void DescriptorBuffer::write(Output& output) const
 {
     Descriptor::write(output);
 
-    if (output.version_greater_equal(0, 4, 0))
+    output.writeValue<uint32_t>("dataList", bufferInfoList.size());
+    for (auto& bufferInfo : bufferInfoList)
     {
-        output.writeValue<uint32_t>("dataList", bufferInfoList.size());
-        for (auto& bufferInfo : bufferInfoList)
-        {
-            output.writeObject("data", bufferInfo->data.get());
-        }
-    }
-    else
-    {
-        output.writeValue<uint32_t>("NumData", bufferInfoList.size());
-        for (auto& bufferInfo : bufferInfoList)
-        {
-            output.writeObject("Data", bufferInfo->data.get());
-        }
+        output.writeObject("data", bufferInfo->data.get());
     }
 }
 
 void DescriptorBuffer::compile(Context& context)
 {
-    VkBufferUsageFlags bufferUsageFlags = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    VkBufferUsageFlags bufferUsageFlags = 0;
+    switch (descriptorType)
+    {
+    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+        bufferUsageFlags = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+        break;
+    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+        bufferUsageFlags = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+        break;
+    default:
+        break;
+    }
 
     bool requiresAssingmentOfBuffers = false;
     for (auto& bufferInfo : bufferInfoList)
@@ -137,7 +122,11 @@ void DescriptorBuffer::compile(Context& context)
     if (requiresAssingmentOfBuffers)
     {
         VkDeviceSize alignment = 4;
-        if (bufferUsageFlags == VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) alignment = context.device->getPhysicalDevice()->getProperties().limits.minUniformBufferOffsetAlignment;
+        const auto& limits = context.device->getPhysicalDevice()->getProperties().limits;
+        if (bufferUsageFlags == VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
+            alignment = limits.minUniformBufferOffsetAlignment;
+        else if (bufferUsageFlags == VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)
+            alignment = limits.minStorageBufferOffsetAlignment;
 
         VkDeviceSize totalSize = 0;
 
@@ -150,6 +139,7 @@ void DescriptorBuffer::compile(Context& context)
                 {
                     totalSize = offset + bufferInfo->data->dataSize();
                     offset = (alignment == 1 || (totalSize % alignment) == 0) ? totalSize : ((totalSize / alignment) + 1) * alignment;
+                    if (bufferInfo->data->dynamic()) bufferUsageFlags |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
                 }
             }
         }
@@ -171,7 +161,7 @@ void DescriptorBuffer::compile(Context& context)
                     }
                     else
                     {
-                        std::cout << "Warning: DescriptorBuffer::compile(..) unable to allocate bufferInfo with within associated Buffer." << std::endl;
+                        warn("DescriptorBuffer::compile(..) unable to allocate bufferInfo with within associated Buffer.");
                     }
                 }
             }
@@ -195,7 +185,7 @@ void DescriptorBuffer::compile(Context& context)
                     }
                     else
                     {
-                        std::cout << "Warning: DescriptorBuffer::compile(..) unable to allocate buffer within associated DeviceMemory." << std::endl;
+                        warn("DescriptorBuffer::compile(..) unable to allocate buffer within associated DeviceMemory.");
                     }
                 }
             }

@@ -32,10 +32,17 @@ namespace vsg
 
     using QueueSettings = std::vector<QueueSetting>;
 
+    /// Device encapsulate vkDeivce, a logical handle to the PhysicalDevice with capabilities specified during construction.
     class VSG_DECLSPEC Device : public Inherit<Object, Device>
     {
     public:
-        Device(PhysicalDevice* physicalDevice, const QueueSettings& queueSettings, const Names& layers, const Names& deviceExtensions, const DeviceFeatures* deviceFeatures = nullptr, AllocationCallbacks* allocator = nullptr);
+        Device(PhysicalDevice* physicalDevice, const QueueSettings& queueSettings, Names layers, Names deviceExtensions, const DeviceFeatures* deviceFeatures = nullptr, AllocationCallbacks* allocator = nullptr);
+
+        operator VkDevice() const { return _device; }
+        VkDevice vk() const { return _device; }
+
+        static uint32_t maxNumDevices();
+        const uint32_t deviceID = 0;
 
         Instance* getInstance() { return _instance.get(); }
         const Instance* getInstance() const { return _instance.get(); }
@@ -46,16 +53,20 @@ namespace vsg
         AllocationCallbacks* getAllocationCallbacks() { return _allocator.get(); }
         const AllocationCallbacks* getAllocationCallbacks() const { return _allocator.get(); }
 
+        ref_ptr<Queue> getQueue(uint32_t queueFamilyIndex, uint32_t queueIndex = 0);
+
         const Extensions* getExtensions() const { return _extensions.get(); }
 
-        operator VkDevice() const { return _device; }
-        VkDevice getDevice() const { return _device; }
+        /// get the address of specified function using vkGetDeviceProcAddr
+        template<typename T>
+        bool getProcAddr(T& procAdddress, const char* pName, const char* pNameFallback = nullptr) const
+        {
+            procAdddress = reinterpret_cast<T>(vkGetDeviceProcAddr(_device, pName));
+            if (procAdddress) return true;
 
-        static uint32_t maxNumDevices();
-
-        const uint32_t deviceID = 0;
-
-        ref_ptr<Queue> getQueue(uint32_t queueFamilyIndex, uint32_t queueIndex = 0);
+            if (pNameFallback) procAdddress = reinterpret_cast<T>(vkGetDeviceProcAddr(_device, pNameFallback));
+            return (procAdddress);
+        }
 
     protected:
 		Device();

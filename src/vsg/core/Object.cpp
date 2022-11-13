@@ -16,22 +16,12 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <vsg/core/Object.h>
 #include <vsg/core/Visitor.h>
 
-#include <vsg/traversals/RecordTraversal.h>
-
 #include <vsg/io/Input.h>
+#include <vsg/io/Logger.h>
 #include <vsg/io/Options.h>
 #include <vsg/io/Output.h>
 
 using namespace vsg;
-
-#if 1
-#    include <iostream>
-#    define DEBUG_NOTIFY \
-        if (false) std::cout
-#else
-#    include <iostream>
-#    define DEBUG_NOTIFY std::cout
-#endif
 
 Object::Object() :
     _referenceCount(0),
@@ -52,10 +42,11 @@ Object::Object(const Object& rhs) :
 
 Object& Object::operator=(const Object& rhs)
 {
-    // std::cout << "Object& operator=(const Object&)" << std::endl;
+    //debug("Object& operator=(const Object&)");
+
     if (&rhs == this) return *this;
 
-    if (rhs._auxiliary && rhs._auxiliary->getConnectedObject() == &rhs)
+    if (rhs._auxiliary)
     {
         // the rhs's rhs._auxiliary is uniquely attached to it, so we need to create our own and copy it's ObjectMap across
         auto& userObjects = getOrCreateAuxiliary()->userObjects;
@@ -67,7 +58,7 @@ Object& Object::operator=(const Object& rhs)
 
 Object::~Object()
 {
-    DEBUG_NOTIFY << "Object::~Object() " << this << std::endl;
+    //debug("Object::~Object() ", this);
 
     if (_auxiliary)
     {
@@ -83,13 +74,13 @@ void Object::_attemptDelete() const
     // if no auxiliary is attached then go straight ahead and delete.
     if (_auxiliary == nullptr || _auxiliary->signalConnectedObjectToBeDeleted())
     {
-        DEBUG_NOTIFY << "Object::_delete() " << this << " calling delete" << std::endl;
+        //debug("Object::_delete() ", this, " calling delete");
 
         delete this;
     }
     else
     {
-        //std::cout<<"Object::_delete() "<<this<<" choosing not to delete"<<std::endl;
+        debug("Object::_delete() ", this, " choosing not to delete");
     }
 }
 
@@ -110,71 +101,34 @@ void Object::accept(RecordTraversal& visitor) const
 
 void Object::read(Input& input)
 {
-    if (input.version_greater_equal(0, 4, 0))
+    auto numObjects = input.readValue<uint32_t>("userObjects");
+    if (numObjects > 0)
     {
-        auto numObjects = input.readValue<uint32_t>("userObjects");
-        if (numObjects > 0)
+        auto& objectMap = getOrCreateAuxiliary()->userObjects;
+        for (; numObjects > 0; --numObjects)
         {
-            auto& objectMap = getOrCreateAuxiliary()->userObjects;
-            for (; numObjects > 0; --numObjects)
-            {
-                std::string key = input.readValue<std::string>("key");
-                input.readObject("object", objectMap[key]);
-            }
-        }
-    }
-    else
-    {
-        auto numObjects = input.readValue<uint32_t>("NumUserObjects");
-        if (numObjects > 0)
-        {
-            auto& objectMap = getOrCreateAuxiliary()->userObjects;
-            for (; numObjects > 0; --numObjects)
-            {
-                std::string key = input.readValue<std::string>("Key");
-                input.readObject("Object", objectMap[key]);
-            }
+            std::string key = input.readValue<std::string>("key");
+            input.readObject("object", objectMap[key]);
         }
     }
 }
 
 void Object::write(Output& output) const
 {
-    if (output.version_greater_equal(0, 4, 0))
+    if (_auxiliary)
     {
-        if (_auxiliary && _auxiliary->getConnectedObject() == this)
+        // we have a unique auxiliary, need to write out it's ObjectMap entries
+        auto& userObjects = _auxiliary->userObjects;
+        output.writeValue<uint32_t>("userObjects", userObjects.size());
+        for (auto& entry : userObjects)
         {
-            // we have a unique auxiliary, need to write out it's ObjectMap entries
-            auto& userObjects = _auxiliary->userObjects;
-            output.writeValue<uint32_t>("userObjects", userObjects.size());
-            for (auto& entry : userObjects)
-            {
-                output.write("key", entry.first);
-                output.writeObject("object", entry.second.get());
-            }
-        }
-        else
-        {
-            output.writeValue<uint32_t>("userObjects", 0);
+            output.write("key", entry.first);
+            output.writeObject("object", entry.second.get());
         }
     }
     else
     {
-        if (_auxiliary && _auxiliary->getConnectedObject() == this)
-        {
-            // we have a unique auxiliary, need to write out it's ObjectMap entries
-            auto& objectMap = _auxiliary->userObjects;
-            output.writeValue<uint32_t>("NumUserObjects", objectMap.size());
-            for (auto& entry : objectMap)
-            {
-                output.write("Key", entry.first);
-                output.writeObject("Object", entry.second.get());
-            }
-        }
-        else
-        {
-            output.writeValue<uint32_t>("NumUserObjects", 0);
-        }
+        output.writeValue<uint32_t>("userObjects", 0);
     }
 }
 
@@ -221,7 +175,7 @@ void Object::setAuxiliary(Auxiliary* auxiliary)
 
 Auxiliary* Object::getOrCreateAuxiliary()
 {
-    DEBUG_NOTIFY << "Object::getOrCreateAuxiliary() _auxiliary=" << _auxiliary << std::endl;
+    //debug("Object::getOrCreateAuxiliary() _auxiliary=",  _auxiliary);
     if (!_auxiliary)
     {
         _auxiliary = new Auxiliary(this);

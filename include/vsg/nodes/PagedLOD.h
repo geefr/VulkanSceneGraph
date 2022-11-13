@@ -57,7 +57,6 @@ namespace vsg
         {
             double minimumScreenHeightRatio = 0.0; // 0.0 is always visible
             ref_ptr<Node> node;
-            // TODO need a record of the last time traversed
         };
 
         // external file to load when child 0 is null.
@@ -65,8 +64,6 @@ namespace vsg
 
         // priority value assigned by record traversal as a guide to how important the external child is for loading.
         mutable std::atomic<double> priority{0.0};
-
-        // TODO need status of external file load
 
         dsphere bound;
 
@@ -92,12 +89,11 @@ namespace vsg
             NoRequest = 0,
             ReadRequest = 1,
             Reading = 2,
-            CompileRequest = 3,
-            Compiling = 4,
-            MergeRequest = 5,
-            Merging = 6,
-            DeleteRequest = 7,
-            Deleting = 8
+            Compiling = 3,
+            MergeRequest = 4,
+            Merging = 5,
+            DeleteRequest = 6,
+            Deleting = 7
         };
 
         mutable std::atomic<RequestStatus> requestStatus{NoRequest};

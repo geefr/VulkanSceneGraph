@@ -12,10 +12,10 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 #include <vsg/core/Exception.h>
 #include <vsg/core/compare.h>
+#include <vsg/io/Logger.h>
 #include <vsg/io/Options.h>
 #include <vsg/state/ComputePipeline.h>
-#include <vsg/traversals/CompileTraversal.h>
-#include <vsg/vk/CommandBuffer.h>
+#include <vsg/vk/Context.h>
 
 using namespace vsg;
 
@@ -52,32 +52,16 @@ void ComputePipeline::read(Input& input)
 {
     Object::read(input);
 
-    if (input.version_greater_equal(0, 1, 4))
-    {
-        input.read("layout", layout);
-        input.read("stage", stage);
-    }
-    else
-    {
-        input.read("PipelineLayout", layout);
-        input.read("ShaderStage", stage);
-    }
+    input.readObject("layout", layout);
+    input.readObject("stage", stage);
 }
 
 void ComputePipeline::write(Output& output) const
 {
     Object::write(output);
 
-    if (output.version_greater_equal(0, 1, 4))
-    {
-        output.write("layout", layout);
-        output.write("stage", stage);
-    }
-    else
-    {
-        output.write("PipelineLayout", layout);
-        output.write("ShaderStage", stage);
-    }
+    output.writeObject("layout", layout);
+    output.writeObject("stage", stage);
 }
 
 void ComputePipeline::compile(Context& context)
@@ -93,6 +77,10 @@ void ComputePipeline::compile(Context& context)
             if (shaderCompiler)
             {
                 shaderCompiler->compile(stage); // may need to map defines and paths in some fashion
+            }
+            else
+            {
+                fatal("VulkanSceneGraph not compiled with GLSLang, unable to compile shaders.");
             }
         }
 
@@ -158,28 +146,14 @@ void BindComputePipeline::read(Input& input)
 {
     StateCommand::read(input);
 
-    if (input.version_greater_equal(0, 1, 4))
-    {
-        input.read("pipeline", pipeline);
-    }
-    else
-    {
-        input.read("ComputePipeline", pipeline);
-    }
+    input.readObject("pipeline", pipeline);
 }
 
 void BindComputePipeline::write(Output& output) const
 {
     StateCommand::write(output);
 
-    if (output.version_greater_equal(0, 1, 4))
-    {
-        output.write("pipeline", pipeline);
-    }
-    else
-    {
-        output.write("ComputePipeline", pipeline);
-    }
+    output.writeObject("pipeline", pipeline);
 }
 
 void BindComputePipeline::record(CommandBuffer& commandBuffer) const

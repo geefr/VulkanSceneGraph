@@ -17,29 +17,30 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 namespace vsg
 {
 
-    /// DesctiporPool ecapsulates management of VkDescriptorPool
+    /// DesctiporPool encapsulates management of VkDescriptorPool
     class VSG_DECLSPEC DescriptorPool : public Inherit<Object, DescriptorPool>
     {
     public:
         DescriptorPool(Device* device, uint32_t maxSets, const DescriptorPoolSizes& descriptorPoolSizes);
 
-        operator const VkDescriptorPool&() const { return _descriptorPool; }
+        operator VkDescriptorPool() const { return _descriptorPool; }
+        VkDescriptorPool vk() const { return _descriptorPool; }
 
         Device* getDevice() { return _device; }
         const Device* getDevice() const { return _device; }
 
-        /// allocate or reuse availalbe DescriptorSet::Implementation - called automatically when compiling DescriptorSet
+        /// allocate or reuse available DescriptorSet::Implementation - called automatically when compiling DescriptorSet
         ref_ptr<DescriptorSet::Implementation> allocateDescriptorSet(DescriptorSetLayout* descriptorSetLayout);
 
         /// free DescriptorSet::Implementation for reuse - called automatically be destruction of DescriptorSet or release of it's Vulkan resources.
         void freeDescriptorSet(ref_ptr<DescriptorSet::Implementation> dsi);
 
-        /// get the stats of the availble DescriptorSets/Descritors
+        /// get the stats of the available DescriptorSets/Descriptors
         bool getAvailablity(uint32_t& maxSets, DescriptorPoolSizes& descriptorPoolSizes) const;
 
-        /// mutex used to ensure thead safe access of DesciptorPool resoruces.
-        /// Locked autoamtically by allocatoeDecstiproSet(..), freeDescriptorSet(), getAvailablity() and DescriptorSet:::Implementation
-        /// to esnure thread safe opeartion. Normal VulkanSceneGraph usage will not require users to lock this mutex so threat as an internal implementation detail.
+        /// mutex used to ensure thead safe access of DesciptorPool resources.
+        /// Locked automatically by allocatoeDecstiproSet(..), freeDescriptorSet(), getAvailablity() and DescriptorSet:::Implementation
+        /// to ensure thread safe operation. Normal VulkanSceneGraph usage will not require users to lock this mutex so threat as an internal implementation detail.
         mutable std::mutex mutex;
 
     protected:

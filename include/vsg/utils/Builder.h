@@ -12,14 +12,16 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 </editor-fold> */
 
+#include <vsg/app/CompileTraversal.h>
 #include <vsg/maths/box.h>
 #include <vsg/maths/sphere.h>
-#include <vsg/traversals/CompileTraversal.h>
 #include <vsg/utils/ShaderSet.h>
 #include <vsg/utils/SharedObjects.h>
 
 namespace vsg
 {
+
+    /// StateInfo struct provides state related settings supported by Builder
     struct StateInfo
     {
         bool lighting = true;
@@ -36,6 +38,7 @@ namespace vsg
     };
     VSG_type_name(vsg::StateInfo);
 
+    /// GeometryInfo struct provides geometry related settings supported by Builder
     struct GeometryInfo
     {
         GeometryInfo() = default;
@@ -86,6 +89,9 @@ namespace vsg
     };
     VSG_type_name(vsg::GeometryInfo);
 
+    /// Builder class that creates subgraphs that can render primitive geometries.
+    /// Supported shapes are Box, Capsule, Cone, Cylinder, Disk, Quad, Sphere and HeightField.
+    /// Uses GeometryInfo and StateInfo to guide the geometry position/size and rendering state.
     class VSG_DECLSPEC Builder : public Inherit<Object, Builder>
     {
     public:

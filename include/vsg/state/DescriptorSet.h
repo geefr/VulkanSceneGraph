@@ -21,6 +21,7 @@ namespace vsg
     // forward declare
     class DescriptorPool;
 
+    /// DescriptorSet encapsulates VkDescriptorSet and VkDescriptorSetAllocateInfo settings used to describe the Descriptors associated with the descriptor set.
     class VSG_DECLSPEC DescriptorSet : public Inherit<Object, DescriptorSet>
     {
     public:
@@ -57,8 +58,8 @@ namespace vsg
         VkDescriptorSet vk(uint32_t deviceID) const;
 
     public:
-        /// Wrapper class for the managemnt of the Vulkan VkDescriptorSet handle.
-        //. This is an intnrnal implementation class that is only public to enable use within DescriptorPool and Context,
+        /// Wrapper class for the management of the Vulkan VkDescriptorSet handle.
+        /// This is an internal implementation class that is only public to enable use within DescriptorPool and Context,
         /// it is not intended to be used directly by VulkanSceneGraph users.
         class VSG_DECLSPEC Implementation : public Inherit<Object, Implementation>
         {
@@ -69,7 +70,7 @@ namespace vsg
 
             VkDescriptorSet _descriptorSet;
 
-            static void recyle(ref_ptr<DescriptorSet::Implementation>& dsi);
+            static void recycle(ref_ptr<DescriptorSet::Implementation>& dsi);
 
         protected:
             virtual ~Implementation();
@@ -77,6 +78,7 @@ namespace vsg
             friend DescriptorPool;
 
             ref_ptr<DescriptorPool> _descriptorPool;
+            ref_ptr<DescriptorSetLayout> _descriptorSetLayout;
             Descriptors _descriptors;
             DescriptorPoolSizes _descriptorPoolSizes;
         };
@@ -87,6 +89,7 @@ namespace vsg
         vk_buffer<ref_ptr<Implementation>> _implementation;
     };
     VSG_type_name(vsg::DescriptorSet);
+    VSG_type_name(vsg::DescriptorSet::Implementation);
 
     using DescriptorSets = std::vector<ref_ptr<DescriptorSet>>;
 

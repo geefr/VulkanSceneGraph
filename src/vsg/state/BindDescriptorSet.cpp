@@ -10,13 +10,12 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 </editor-fold> */
 
+#include <vsg/app/View.h>
 #include <vsg/core/Exception.h>
 #include <vsg/core/compare.h>
 #include <vsg/io/Options.h>
 #include <vsg/state/BindDescriptorSet.h>
-#include <vsg/traversals/CompileTraversal.h>
-#include <vsg/viewer/View.h>
-#include <vsg/vk/CommandBuffer.h>
+#include <vsg/vk/Context.h>
 
 using namespace vsg;
 
@@ -48,62 +47,39 @@ void BindDescriptorSets::read(Input& input)
 {
     _vulkanData.clear();
 
-    if (input.version_greater_equal(0, 2, 13))
+    StateCommand::read(input);
+
+    if (input.version_greater_equal(0, 5, 4))
     {
-        StateCommand::read(input);
-    }
-    else
-    {
-        Object::read(input);
+        input.readValue<uint32_t>("pipelineBindPoint", pipelineBindPoint);
     }
 
-    if (input.version_greater_equal(0, 1, 4))
-    {
-        input.read("layout", layout);
-        input.read("firstSet", firstSet);
-        input.readObjects("descriptorSets", descriptorSets);
-    }
-    else
-    {
-        input.read("PipelineLayout", layout);
+    input.readObject("layout", layout);
+    input.read("firstSet", firstSet);
+    input.readObjects("descriptorSets", descriptorSets);
 
-        input.read("firstSet", firstSet);
-
-        descriptorSets.resize(input.readValue<uint32_t>("NumDescriptorSets"));
-        for (auto& descriptorSet : descriptorSets)
-        {
-            input.read("DescriptorSets", descriptorSet);
-        }
+    if (input.version_greater_equal(0, 5, 4))
+    {
+        input.readValues("dynamicOffsets", dynamicOffsets);
     }
 }
 
 void BindDescriptorSets::write(Output& output) const
 {
-    if (output.version_greater_equal(0, 2, 13))
+    StateCommand::write(output);
+
+    if (output.version_greater_equal(0, 5, 4))
     {
-        StateCommand::write(output);
-    }
-    else
-    {
-        Object::write(output);
+        output.writeValue<uint32_t>("pipelineBindPoint", pipelineBindPoint);
     }
 
-    if (output.version_greater_equal(0, 1, 4))
-    {
-        output.write("layout", layout);
-        output.write("firstSet", firstSet);
-        output.writeObjects("descriptorSets", descriptorSets);
-    }
-    else
-    {
-        output.write("PipelineLayout", layout);
-        output.write("firstSet", firstSet);
+    output.writeObject("layout", layout);
+    output.write("firstSet", firstSet);
+    output.writeObjects("descriptorSets", descriptorSets);
 
-        output.writeValue<uint32_t>("NumDescriptorSets", descriptorSets.size());
-        for (auto& descriptorSet : descriptorSets)
-        {
-            output.write("DescriptorSets", descriptorSet);
-        }
+    if (output.version_greater_equal(0, 5, 4))
+    {
+        output.writeValues("dynamicOffsets", dynamicOffsets);
     }
 }
 
@@ -127,8 +103,11 @@ void BindDescriptorSets::compile(Context& context)
 
 void BindDescriptorSets::record(CommandBuffer& commandBuffer) const
 {
+    //info("BindDescriptorSets::record() ", dynamicOffsets.size(), ", ", dynamicOffsets.data());
     auto& vkd = _vulkanData[commandBuffer.deviceID];
-    vkCmdBindDescriptorSets(commandBuffer, pipelineBindPoint, vkd._vkPipelineLayout, firstSet, static_cast<uint32_t>(vkd._vkDescriptorSets.size()), vkd._vkDescriptorSets.data(), 0, nullptr);
+    vkCmdBindDescriptorSets(commandBuffer, pipelineBindPoint, vkd._vkPipelineLayout, firstSet,
+                            static_cast<uint32_t>(vkd._vkDescriptorSets.size()), vkd._vkDescriptorSets.data(),
+                            static_cast<uint32_t>(dynamicOffsets.size()), dynamicOffsets.data());
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -160,17 +139,18 @@ void BindDescriptorSet::read(Input& input)
 
     StateCommand::read(input);
 
-    if (input.version_greater_equal(0, 1, 4))
+    if (input.version_greater_equal(0, 5, 4))
     {
-        input.read("layout", layout);
-        input.read("firstSet", firstSet);
-        input.read("descriptorSet", descriptorSet);
+        input.readValue<uint32_t>("pipelineBindPoint", pipelineBindPoint);
     }
-    else
+
+    input.readObject("layout", layout);
+    input.read("firstSet", firstSet);
+    input.readObject("descriptorSet", descriptorSet);
+
+    if (input.version_greater_equal(0, 5, 4))
     {
-        input.read("PipelineLayout", layout);
-        input.read("firstSet", firstSet);
-        input.read("DescriptorSet", descriptorSet);
+        input.readValues("dynamicOffsets", dynamicOffsets);
     }
 }
 
@@ -178,17 +158,18 @@ void BindDescriptorSet::write(Output& output) const
 {
     StateCommand::write(output);
 
-    if (output.version_greater_equal(0, 1, 4))
+    if (output.version_greater_equal(0, 5, 4))
     {
-        output.write("layout", layout);
-        output.write("firstSet", firstSet);
-        output.write("descriptorSet", descriptorSet);
+        output.writeValue<uint32_t>("pipelineBindPoint", pipelineBindPoint);
     }
-    else
+
+    output.writeObject("layout", layout);
+    output.write("firstSet", firstSet);
+    output.writeObject("descriptorSet", descriptorSet);
+
+    if (output.version_greater_equal(0, 5, 4))
     {
-        output.write("PipelineLayout", layout);
-        output.write("firstSet", firstSet);
-        output.write("DescriptorSet", descriptorSet);
+        output.writeValues("dynamicOffsets", dynamicOffsets);
     }
 }
 
@@ -208,7 +189,9 @@ void BindDescriptorSet::compile(Context& context)
 
 void BindDescriptorSet::record(CommandBuffer& commandBuffer) const
 {
+    //info("BindDescriptorSet::record() ", dynamicOffsets.size(), ", ", dynamicOffsets.data());
     auto& vkd = _vulkanData[commandBuffer.deviceID];
-
-    vkCmdBindDescriptorSets(commandBuffer, pipelineBindPoint, vkd._vkPipelineLayout, firstSet, 1, &(vkd._vkDescriptorSet), 0, nullptr);
+    vkCmdBindDescriptorSets(commandBuffer, pipelineBindPoint, vkd._vkPipelineLayout, firstSet,
+                            1, &(vkd._vkDescriptorSet),
+                            static_cast<uint32_t>(dynamicOffsets.size()), dynamicOffsets.data());
 }

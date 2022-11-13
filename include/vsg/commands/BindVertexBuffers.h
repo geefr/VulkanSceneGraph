@@ -19,6 +19,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 namespace vsg
 {
+
+    /// BindVertexBuffers command encapsulates vkBindVertexBuffers call and associated settings.
     class VSG_DECLSPEC BindVertexBuffers : public Inherit<Command, BindVertexBuffers>
     {
     public:
@@ -42,13 +44,7 @@ namespace vsg
     protected:
         virtual ~BindVertexBuffers();
 
-        struct VulkanData
-        {
-            std::vector<VkBuffer> vkBuffers;
-            std::vector<VkDeviceSize> offsets;
-        };
-
-        vk_buffer<VulkanData> _vulkanData;
+        vk_buffer<VulkanArrayData> _vulkanData;
     };
     VSG_type_name(vsg::BindVertexBuffers);
 

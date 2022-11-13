@@ -13,10 +13,10 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 </editor-fold> */
 
 #include <vsg/core/compare.h>
+#include <vsg/state/ArrayState.h>
 #include <vsg/state/GraphicsPipeline.h>
 #include <vsg/state/Sampler.h>
 #include <vsg/state/ShaderStage.h>
-#include <vsg/traversals/ArrayState.h>
 
 namespace vsg
 {
@@ -33,6 +33,7 @@ namespace vsg
 
         explicit operator bool() const noexcept { return !name.empty(); }
     };
+    VSG_type_name(vsg::AttributeBinding);
 
     struct VSG_DECLSPEC UniformBinding
     {
@@ -49,6 +50,7 @@ namespace vsg
 
         explicit operator bool() const noexcept { return !name.empty(); }
     };
+    VSG_type_name(vsg::UniformBinding);
 
     struct VSG_DECLSPEC PushConstantRange
     {
@@ -58,15 +60,18 @@ namespace vsg
 
         int compare(const PushConstantRange& rhs) const;
     };
+    VSG_type_name(vsg::PushConstantRange);
 
     struct VSG_DECLSPEC DefinesArrayState
     {
-        std::vector<std::string> defines;
+        std::set<std::string> defines;
         ref_ptr<ArrayState> arrayState;
 
         int compare(const DefinesArrayState& rhs) const;
     };
+    VSG_type_name(vsg::DefinesArrayState);
 
+    /// ShaderSet provides collection of shader related settings to provide a form of shader introspection.
     class VSG_DECLSPEC ShaderSet : public Inherit<Object, ShaderSet>
     {
     public:
@@ -80,7 +85,7 @@ namespace vsg
         std::vector<UniformBinding> uniformBindings;
         std::vector<PushConstantRange> pushConstantRanges;
         std::vector<DefinesArrayState> definesArrayStates; // put more constrained ArrayState matches first so they are matched first.
-        std::vector<std::string> optionalDefines;
+        std::set<std::string> optionalDefines;
         GraphicsPipelineStates defaultGraphicsPipelineStates;
 
         /// variants of the rootShaderModule compiled for different combinations of ShaderCompileSettings
@@ -99,13 +104,19 @@ namespace vsg
         void addPushConstantRange(std::string name, std::string define, VkShaderStageFlags stageFlags, uint32_t offset, uint32_t size);
 
         /// get the AttributeBinding associated with name
+        AttributeBinding& getAttributeBinding(const std::string& name);
+
+        /// get the UniformBinding associated with name
+        UniformBinding& getUniformBinding(const std::string& name);
+
+        /// get the const AttributeBinding associated with name
         const AttributeBinding& getAttributeBinding(const std::string& name) const;
 
-        /// get the AttributeBinding associated with name
+        /// get the const UniformBinding associated with name
         const UniformBinding& getUniformBinding(const std::string& name) const;
 
         /// get the first ArrayState that has matches with defines in the specified list of defines.
-        ref_ptr<ArrayState> getSuitableArrayState(const std::vector<std::string>& defines) const;
+        ref_ptr<ArrayState> getSuitableArrayState(const std::set<std::string>& defines) const;
 
         /// get the ShaderStages variant that uses specified ShaderCompileSettings.
         ShaderStages getShaderStages(ref_ptr<ShaderCompileSettings> scs = {});
@@ -118,8 +129,8 @@ namespace vsg
     protected:
         virtual ~ShaderSet();
 
-        const AttributeBinding _nullAttributeBinding;
-        const UniformBinding _nullUniformBinding;
+        AttributeBinding _nullAttributeBinding;
+        UniformBinding _nullUniformBinding;
     };
     VSG_type_name(vsg::ShaderSet);
 

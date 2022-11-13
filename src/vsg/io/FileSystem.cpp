@@ -11,6 +11,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 </editor-fold> */
 
 #include <vsg/io/FileSystem.h>
+#include <vsg/io/Logger.h>
 #include <vsg/io/Options.h>
 #include <vsg/io/stream.h>
 
@@ -43,8 +44,6 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #endif
 
 #include <limits.h>
-
-#include <iostream>
 
 using namespace vsg;
 
@@ -272,7 +271,7 @@ bool vsg::makeDirectory(const Path& path)
             if (errno != EEXIST)
             {
                 // quietly ignore a mkdir on a file that already exists as this can happen safely during a filling in a filecache.
-                std::cerr << "mkdir(" << directory_to_create << ") failed. errno = " << errno << std::endl;
+                debug("mkdir(", directory_to_create, ") failed. errno = ", errno);
             }
             return false;
         }
@@ -286,20 +285,24 @@ Path vsg::executableFilePath()
     Path path;
 
 #if defined(WIN32)
-    char buf[PATH_MAX + 1];
-    DWORD result = GetModuleFileName(NULL, buf, sizeof(buf) - 1);
-    if (result && result < sizeof(buf))
+    TCHAR buf[PATH_MAX + 1];
+    DWORD result = GetModuleFileName(NULL, buf, static_cast<DWORD>(std::size(buf) - 1));
+    if (result && result < std::size(buf))
         path = buf;
 #elif defined(__linux__)
-    // TODO need to handle case where executable filename is longer than PATH_MAX
-    // See https://stackoverflow.com/questions/5525668/how-to-implement-readlink-to-find-the-path
-    char buf[PATH_MAX + 1];
-    ssize_t len = ::readlink("/proc/self/exe", buf, sizeof(buf) - 1);
-    if (len != -1)
+
+    std::vector<char> buffer(1024);
+    ssize_t len = 0;
+    while ((len = ::readlink("/proc/self/exe", buffer.data(), buffer.size())) == static_cast<ssize_t>(buffer.size()))
     {
-        buf[len] = '\0';
-        path = buf;
+        buffer.resize(buffer.size() * 2);
     }
+
+    // add terminator to string.
+    buffer[len] = '\0';
+
+    return buffer.data();
+
 #elif defined(__APPLE__)
 #    if TARGET_OS_MAC
     char realPathName[PATH_MAX + 1];
