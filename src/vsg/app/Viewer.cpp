@@ -405,7 +405,13 @@ void Viewer::assignRecordAndSubmitTaskAndPresentation(CommandGraphs in_commandGr
         uint32_t numBuffers = 3;
 
         auto device = deviceQueueFamily.device;
-        uint32_t transferQueueFamily = device->getPhysicalDevice()->getQueueFamily(VK_QUEUE_TRANSFER_BIT);
+
+	// On some devices TRANSFER_BIT is not listed on the queue family, despite being supported as a requirement of GRAPHICS_BIT
+        auto transferQueueFamily = device->getPhysicalDevice()->getQueueFamily(VK_QUEUE_TRANSFER_BIT);
+        if( transferQueueFamily == -1 )
+        {
+            transferQueueFamily = device->getPhysicalDevice()->getQueueFamily(VK_QUEUE_GRAPHICS_BIT);
+        }
 
         if (deviceQueueFamily.presentFamily >= 0)
         {

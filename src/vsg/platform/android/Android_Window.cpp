@@ -322,8 +322,6 @@ Android_Window::Android_Window(vsg::ref_ptr<WindowTraits> traits) :
 {
     _keyboard = new KeyboardMap;
 
-    ANativeWindow* nativeWindow = std::any_cast<ANativeWindow*>(traits->nativeWindow);
-
     if( ! traits->getValue("androidNativeWindow", _window ) )
     {
         vsg::log(vsg::Logger::LOGGER_WARN, "Falling back to std::any_cast<ANativeWindow*> for Android window setup");
