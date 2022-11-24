@@ -330,12 +330,8 @@ endif()
 
 
 if (ANDROID)
-    set(HEADERS ${HEADERS} 
-      ${VSG_SOURCE_DIR}/include/vsg/platform/android/Android_Window.h
-      ${VSG_SOURCE_DIR}/include/vsg/platform/android/Android_WindowTraits.h)
-    set(SOURCES ${SOURCES} 
-      platform/android/Android_Window.cpp
-      platform/android/Android_WindowTraits.cpp)
+    set(HEADERS ${HEADERS} ${VSG_SOURCE_DIR}/include/vsg/platform/android/Android_Window.h)
+    set(SOURCES ${SOURCES} platform/android/Android_Window.cpp)
 
     if(CMAKE_SYSTEM_VERSION GREATER 24)
         set(LIBRARIES ${LIBRARIES} PRIVATE ${AndroidLib} PRIVATE ${AndroidNativeWindowLib})

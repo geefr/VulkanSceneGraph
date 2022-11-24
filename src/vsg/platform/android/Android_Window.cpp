@@ -11,7 +11,6 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 </editor-fold> */
 
 #include <vsg/platform/android/Android_Window.h>
-#include <vsg/platform/android/Android_WindowTraits.h>
 
 #include <android/log.h>
 #include <android/looper.h>
@@ -323,27 +322,14 @@ Android_Window::Android_Window(vsg::ref_ptr<WindowTraits> traits) :
 {
     _keyboard = new KeyboardMap;
 
+    ANativeWindow* nativeWindow = std::any_cast<ANativeWindow*>(traits->nativeWindow);
 
-    if( auto x = traits.cast<Android_WindowTraits>() )
+    if (nativeWindow == nullptr)
     {
-        if( x->nativeWindow )
-        {
-            _window = x->nativeWindow;
-        }
+        throw Exception{"Error: vsg::Android_Window::Android_Window(...) failed to create Window, traits->nativeHandle is not a valid ANativeWindow.", VK_ERROR_INVALID_EXTERNAL_HANDLE};
     }
 
-    if( _window == nullptr )
-    {
-        vsg::log(vsg::Logger::LOGGER_DEBUG, "Falling back to std::any_cast<ANativeWindow*> for Android window setup");
-        ANativeWindow* nativeWindow = std::any_cast<ANativeWindow*>(traits->nativeWindow);
-
-        if (nativeWindow == nullptr)
-        {
-            throw Exception{"Error: vsg::Android_Window::Android_Window(...) failed to create Window, traits->nativeHandle is not a valid ANativeWindow.", VK_ERROR_INVALID_EXTERNAL_HANDLE};
-        }
-
-        _window = nativeWindow;
-    }
+    _window = nativeWindow;
 
     // we could get the width height from the window?
     uint32_t finalWidth = traits->width;
