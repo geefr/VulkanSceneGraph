@@ -800,7 +800,7 @@ MacOS_Window::MacOS_Window(vsg::ref_ptr<vsg::WindowTraits> traits) :
     
     // create view
     _view = [[vsg_MacOS_NSView alloc] initWithVsgWindow:this];
-    [_view setWantsBestResolutionOpenGLSurface:_traits->hdpi];
+    // [_view setWantsBestResolutionOpenGLSurface:_traits->hdpi];
     [_view setAutoresizingMask: (NSViewWidthSizable | NSViewHeightSizable) ];
     [_view setWantsLayer:YES];
 
@@ -808,6 +808,13 @@ MacOS_Window::MacOS_Window(vsg::ref_ptr<vsg::WindowTraits> traits) :
     [_window setContentView:_view];
     _window.initialFirstResponder = _view;
     [_window makeFirstResponder:_view];
+
+    if (traits->fullscreen)
+    {
+        NSRect screenFrame = [[NSScreen mainScreen] frame];
+        [_window setCollectionBehavior:NSWindowCollectionBehaviorFullScreenPrimary];
+        [_window toggleFullScreen:NSApp.delegate];
+    }
 
     auto devicePixelScale = _traits->hdpi ? [_window backingScaleFactor] : 1.0f;
     [_metalLayer setContentsScale:devicePixelScale];

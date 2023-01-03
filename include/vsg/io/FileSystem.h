@@ -42,6 +42,9 @@ namespace vsg
         return paths;
     }
 
+    /// return file type, see include/vsg/io/Path.h for FileType enum,
+    extern VSG_DECLSPEC FileType fileType(const Path& path);
+
     /// return true if a specified file/path exist on system.
     extern VSG_DECLSPEC bool fileExists(const Path& path);
 
@@ -72,6 +75,9 @@ namespace vsg
 
     /// make a directory, return true if path already exists or full path has been created successfully, return false on failure.
     extern VSG_DECLSPEC bool makeDirectory(const Path& path);
+
+    /// get the contents of a directory, return {} if directory name is not a directory
+    extern VSG_DECLSPEC Paths getDirectoryContents(const Path& directoryName);
 
     /// returns the path/filename of the currently executed program.
     extern VSG_DECLSPEC Path executableFilePath();
